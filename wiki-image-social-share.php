@@ -3,7 +3,7 @@
 /*
 Plugin Name: Wiki Image Social Share
 Description: Enhanced social media sharing plugin for WordPress images with rich preview support across all major platforms including WhatsApp, Facebook, Twitter, LinkedIn, Pinterest, Instagram, Telegram, Discord, and Reddit.
-Version: 1.0.0
+Version: 1.2.0
 Author: Arnel Go
 Author URI: https://arnelbg.com/
 Plugin URI: https://github.com/wikiwyrhead/wiki-image-social-share
@@ -23,9 +23,14 @@ if (! defined('ABSPATH')) {
 
 define('WISS_VER', '1.0.0');
 
-
+// Define plugin constants
 define('WISS_DIR', dirname(__FILE__));
 define('WISS_URL', plugins_url('', __FILE__));
+
+// Legacy constants for backward compatibility with existing modules
+define('STI_VER', WISS_VER);
+define('STI_URL', WISS_URL);
+define('STI_DIR', WISS_DIR);
 
 
 if (! class_exists('WISS_Main')) :
@@ -72,6 +77,11 @@ if (! class_exists('WISS_Main')) :
 
             $this->data['settings'] = get_option('wiss_settings');
 
+            // Ensure settings is always an array to prevent fatal errors
+            if (!$this->data['settings']) {
+                $this->data['settings'] = array();
+            }
+
             $this->includes();
 
             add_filter('plugin_action_links', array($this, 'add_settings_link'), 10, 2);
@@ -91,6 +101,9 @@ if (! class_exists('WISS_Main')) :
         private function includes()
         {
 
+            // Load error handler first for debugging
+            include_once WISS_DIR . '/includes/class-wiss-error-handler.php';
+
             include_once WISS_DIR . '/includes/class-sti-helpers.php';
             include_once WISS_DIR . '/includes/class-sti-functions.php';
             include_once WISS_DIR . '/includes/class-sti-conditions.php';
@@ -101,10 +114,16 @@ if (! class_exists('WISS_Main')) :
             include_once WISS_DIR . '/includes/class-wiss-whatsapp-optimizer.php';
 
             if (is_admin()) {
-                include_once WISS_DIR . '/includes/admin/class-sti-admin.php';
+                // Load dependencies first
                 include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
                 include_once WISS_DIR . '/includes/admin/class-sti-admin-helpers.php';
+                include_once WISS_DIR . '/includes/admin/class-sti-admin-display-rules.php';
+
+                // Load main admin classes
+                include_once WISS_DIR . '/includes/admin/class-sti-admin.php';
                 include_once WISS_DIR . '/includes/admin/class-sti-admin-fields.php';
+                include_once WISS_DIR . '/includes/admin/class-sti-admin-ajax.php';
+                include_once WISS_DIR . '/includes/admin/class-sti-admin-meta-boxes.php';
                 include_once WISS_DIR . '/includes/admin/class-sti-admin-notices.php';
             }
         }
@@ -169,6 +188,13 @@ if (! class_exists('WISS_Main')) :
             STI_Integrations::instance();
 
             STI_Shortlink::instance();
+
+            // Initialize admin classes if in admin area
+            if (is_admin()) {
+                STI_Admin::instance();
+                STI_Admin_Notices::instance();
+                new STI_Admin_Ajax();
+            }
         }
 
         /*
@@ -201,6 +227,17 @@ function WISS()
 register_activation_hook(__FILE__, 'wiss_activation_check');
 function wiss_activation_check()
 {
+    // Ensure admin options class is loaded
+    if (!class_exists('STI_Admin_Options')) {
+        include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
+    }
+
+    // Create default settings if they don't exist
+    if (!get_option('wiss_settings')) {
+        $default_settings = STI_Admin_Options::get_default_settings();
+        update_option('wiss_settings', $default_settings, false);
+    }
+
     // Set default options on activation
     $hide_notice = get_option('wiss_hide_welcome_notice');
     if (! $hide_notice) {

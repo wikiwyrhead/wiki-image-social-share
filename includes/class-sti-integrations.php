@@ -1,18 +1,20 @@
 <?php
+
 /**
  * STI integrations
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (! defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-if ( ! class_exists( 'STI_Integrations' ) ) :
+if (! class_exists('STI_Integrations')) :
 
     /**
      * Class for main plugin functions
-    */
-    class STI_Integrations {
+     */
+    class STI_Integrations
+    {
 
         /**
          * @var STI_Integrations The single instance of the class
@@ -32,107 +34,109 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
          * @static
          * @return STI_Integrations - Main instance
          */
-        public static function instance() {
-            if ( is_null( self::$_instance ) ) {
+        public static function instance()
+        {
+            if (is_null(self::$_instance)) {
                 self::$_instance = new self();
             }
             return self::$_instance;
         }
-        
+
         /**
          * Setup actions and filters for all things settings
          */
-        public function __construct() {
+        public function __construct()
+        {
 
-            $theme = function_exists( 'wp_get_theme' ) ? wp_get_theme() : false;
+            $theme = function_exists('wp_get_theme') ? wp_get_theme() : false;
 
-            if ( $theme ) {
-                $this->current_theme = $theme->get( 'Name' );
-                if ( $theme->parent() ) {
-                    $this->current_theme = $theme->parent()->get( 'Name' );
+            if ($theme) {
+                $this->current_theme = $theme->get('Name');
+                if ($theme->parent()) {
+                    $this->current_theme = $theme->parent()->get('Name');
                 }
             }
 
             $this->includes();
 
             // Photo Gallery plugin
-            if ( class_exists( 'BWG' ) ) {
-                add_action( 'wp_enqueue_scripts', array( $this, 'bwg_wp_enqueue_scripts' ), 9999999 );
+            if (class_exists('BWG')) {
+                add_action('wp_enqueue_scripts', array($this, 'bwg_wp_enqueue_scripts'), 9999999);
             }
 
             // SimpLy Gallery Block & Lightbox plugin
-            if ( defined('PGC_SGB_VERSION') ) {
-                add_action( 'wp_head', array( $this, 'pgc_wp_head' ) );
-                add_action( 'wp_enqueue_scripts', array( $this, 'pgc_wp_enqueue_scripts' ), 9999999 );
+            if (defined('PGC_SGB_VERSION')) {
+                add_action('wp_head', array($this, 'pgc_wp_head'));
+                add_action('wp_enqueue_scripts', array($this, 'pgc_wp_enqueue_scripts'), 9999999);
             }
 
             // Simple Lightbox plugin
-            if ( function_exists( 'slb_init' ) ) {
-                add_action( 'wp_head', array( $this, 'slb_wp_head' ) );
+            if (function_exists('slb_init')) {
+                add_action('wp_head', array($this, 'slb_wp_head'));
             }
 
             // Envira gallery plugin
-            if ( class_exists( 'Envira_Gallery' ) || class_exists( 'Envira_Gallery_Lite' ) ) {
-                add_action( 'wp_enqueue_scripts', array( $this, 'envira_wp_enqueue_scripts' ), 9999999 );
+            if (class_exists('Envira_Gallery') || class_exists('Envira_Gallery_Lite')) {
+                add_action('wp_enqueue_scripts', array($this, 'envira_wp_enqueue_scripts'), 9999999);
             }
 
             // WooThumbs for WooCommerce by Iconic plugin
-            if ( class_exists( 'Iconic_WooThumbs' ) ) {
-                add_action( 'wp_enqueue_scripts', array( $this, 'iconic_woothumbs_wp_enqueue_scripts' ), 9999999 );
+            if (class_exists('Iconic_WooThumbs')) {
+                add_action('wp_enqueue_scripts', array($this, 'iconic_woothumbs_wp_enqueue_scripts'), 9999999);
             }
 
             // NextGEN Gallery
-            if ( defined('NGG_PLUGIN') ) {
-                add_action( 'wp_enqueue_scripts', array( $this, 'nextgen_wp_enqueue_scripts' ), 9999999 );
+            if (defined('NGG_PLUGIN')) {
+                add_action('wp_enqueue_scripts', array($this, 'nextgen_wp_enqueue_scripts'), 9999999);
             }
 
             // Elementor
-            if ( defined( 'ELEMENTOR_VERSION' ) || defined( 'ELEMENTOR_PRO_VERSION' ) ) {
-                add_filter( 'sti_generated_selectors', array( $this, 'elementor_sti_generated_selectors' ), 1 );
+            if (defined('ELEMENTOR_VERSION') || defined('ELEMENTOR_PRO_VERSION')) {
+                add_filter('sti_generated_selectors', array($this, 'elementor_sti_generated_selectors'), 1);
             }
 
             // Spectra
-            if ( defined('UAGB_FILE') ) {
-                add_filter( 'sti_generated_selectors', array( $this, 'spectra_sti_generated_selectors' ), 1 );
-                add_action( 'wp_enqueue_scripts', array( $this, 'spectra_wp_enqueue_scripts' ), 9999999 );
+            if (defined('UAGB_FILE')) {
+                add_filter('sti_generated_selectors', array($this, 'spectra_sti_generated_selectors'), 1);
+                add_action('wp_enqueue_scripts', array($this, 'spectra_wp_enqueue_scripts'), 9999999);
             }
 
             // OceanWP theme
-            if ( 'OceanWP' === $this->current_theme ) {
-                add_filter( 'sti_generated_selectors', array( $this, 'oceanwp_sti_generated_selectors' ), 1 );
+            if ('OceanWP' === $this->current_theme) {
+                add_filter('sti_generated_selectors', array($this, 'oceanwp_sti_generated_selectors'), 1);
             }
 
             // Avada theme
-            if ( 'Avada' === $this->current_theme ) {
-                add_filter( 'sti_generated_selectors', array( $this, 'avada_sti_generated_selectors' ), 1 );
+            if ('Avada' === $this->current_theme) {
+                add_filter('sti_generated_selectors', array($this, 'avada_sti_generated_selectors'), 1);
             }
 
             // SEOPress, on-site SEO
-            add_filter('option_seopress_social_option_name', array( $this, 'option_seopress_social_option_name' ), 10, 2);
-
+            add_filter('option_seopress_social_option_name', array($this, 'option_seopress_social_option_name'), 10, 2);
         }
 
         /**
          * Include files
          */
-        public function includes() {
+        public function includes()
+        {
 
             // Gutenberg block
-            if ( function_exists( 'register_block_type' ) ) {
-                include_once( STI_DIR . '/includes/modules/gutenberg/class-sti-gutenberg-init.php' );
+            if (function_exists('register_block_type')) {
+                include_once(WISS_DIR . '/includes/modules/gutenberg/class-sti-gutenberg-init.php');
             }
 
             // Metaslider plugin
-            if ( class_exists( 'MetaSliderPlugin' ) ) {
-                include_once( STI_DIR . '/includes/modules/class-sti-metaslider.php' );
+            if (class_exists('MetaSliderPlugin')) {
+                include_once(WISS_DIR . '/includes/modules/class-sti-metaslider.php');
             }
-
         }
 
         /*
          * Photo Gallery plugin
          */
-        public function bwg_wp_enqueue_scripts() {
+        public function bwg_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -156,27 +160,27 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * SimpLy Gallery plugin: custom styles
          */
-        public function pgc_wp_head() {
+        public function pgc_wp_head()
+        {
 
             echo '<style>
             .pgc-rev-lb-b-view.pgc-rev-lb-b-activate {
                 z-index: 2147483 !important;
             }
             </style>';
-
         }
 
         /*
          * SimpLy Gallery plugin: custom js
          */
-        public function pgc_wp_enqueue_scripts() {
+        public function pgc_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -189,36 +193,36 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * Simple Lightbox plugin: fix styles inside lightbox
          */
-        public function slb_wp_head() {
+        public function slb_wp_head()
+        {
 
-            $css_file_url = STI_URL . '/assets/css/sti.css';
-            $css_file_dir = STI_DIR . '/assets/css/sti.css';
+            $css_file_url = WISS_URL . '/assets/css/sti.css';
+            $css_file_dir = WISS_DIR . '/assets/css/sti.css';
 
-            $css_styles = file_get_contents( $css_file_dir );
+            $css_styles = file_get_contents($css_file_dir);
 
-            $css_styles = str_replace('.sti ', '#slb_viewer_wrap .slb_theme_slb_baseline .sti ', $css_styles );
-            $css_styles = str_replace('.sti.', '#slb_viewer_wrap .slb_theme_slb_baseline .sti.', $css_styles );
-            $css_styles = str_replace('.sti-mobile-btn', '#slb_viewer_wrap .slb_theme_slb_baseline .sti-mobile-btn', $css_styles );
+            $css_styles = str_replace('.sti ', '#slb_viewer_wrap .slb_theme_slb_baseline .sti ', $css_styles);
+            $css_styles = str_replace('.sti.', '#slb_viewer_wrap .slb_theme_slb_baseline .sti.', $css_styles);
+            $css_styles = str_replace('.sti-mobile-btn', '#slb_viewer_wrap .slb_theme_slb_baseline .sti-mobile-btn', $css_styles);
 
             $css_styles = '#slb_viewer_wrap .slb_theme_slb_baseline .sti { width: auto !important; height: auto  !important; }' . $css_styles;
             $css_styles = '#slb_viewer_wrap .slb_theme_slb_baseline .sti-mobile-btn { width: 36px !important; height: 36px !important; }' . $css_styles;
             $css_styles = '.sti.sti-top.sti-mobile { z-index: 999999; }' . $css_styles;
 
             echo '<style>' . $css_styles . '</style>';
-
         }
 
         /*
          * Envira gallery: relayout sharingbuutons on images load
          */
-        public function envira_wp_enqueue_scripts() {
+        public function envira_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -234,14 +238,14 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * WooThumbs for WooCommerce by Iconic plugin: fix layout for galleries
          */
-        public function iconic_woothumbs_wp_enqueue_scripts() {
+        public function iconic_woothumbs_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -264,14 +268,14 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * NextGEN Gallery plugin
          */
-        public function nextgen_wp_enqueue_scripts() {
+        public function nextgen_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -293,20 +297,20 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * New image selectors for Elemetor gallery widgets
          */
-        public function elementor_sti_generated_selectors( $selectors_arr ) {
+        public function elementor_sti_generated_selectors($selectors_arr)
+        {
 
             $new_selectors = array();
 
-            if ( ! empty( $selectors_arr ) ) {
-                foreach ( $selectors_arr as $selector ) {
-                    if ( STI_Helpers::str_ends_with( $selector, 'img') ) {
+            if (! empty($selectors_arr)) {
+                foreach ($selectors_arr as $selector) {
+                    if (STI_Helpers::str_ends_with($selector, 'img')) {
                         $new_selectors[] = '.elementor-widget-gallery .elementor-gallery-item';
                         $new_selectors[] = '.elementor-carousel-image';
                         break;
@@ -314,48 +318,48 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }
             }
 
-            if ( ! empty( $new_selectors ) ) {
-                $selectors_arr = array_merge( $selectors_arr, $new_selectors );
+            if (! empty($new_selectors)) {
+                $selectors_arr = array_merge($selectors_arr, $new_selectors);
             }
 
             return $selectors_arr;
-
         }
 
         /*
         * Spectra: New image selectors for gallery widgets
         */
-        public function spectra_sti_generated_selectors( $selectors_arr ) {
+        public function spectra_sti_generated_selectors($selectors_arr)
+        {
 
             $new_selectors = array();
 
-            if ( ! empty( $selectors_arr ) ) {
-                foreach ( $selectors_arr as $selector ) {
-                    if ( STI_Helpers::str_ends_with( $selector, 'img') ) {
+            if (! empty($selectors_arr)) {
+                foreach ($selectors_arr as $selector) {
+                    if (STI_Helpers::str_ends_with($selector, 'img')) {
                         $new_selectors[] = '.spectra-image-gallery .spectra-image-gallery__media';
                         break;
                     }
                 }
             }
 
-            if ( ! empty( $new_selectors ) ) {
-                $selectors_arr = array_merge( $selectors_arr, $new_selectors );
+            if (! empty($new_selectors)) {
+                $selectors_arr = array_merge($selectors_arr, $new_selectors);
             }
 
             return $selectors_arr;
-
         }
 
         /*
         * OceanWP: New image selectors for gallery widgets
         */
-        public function oceanwp_sti_generated_selectors( $selectors_arr ) {
+        public function oceanwp_sti_generated_selectors($selectors_arr)
+        {
 
             $new_selectors = array();
 
-            if ( ! empty( $selectors_arr ) ) {
-                foreach ( $selectors_arr as $selector ) {
-                    if ( STI_Helpers::str_ends_with( $selector, 'img') ) {
+            if (! empty($selectors_arr)) {
+                foreach ($selectors_arr as $selector) {
+                    if (STI_Helpers::str_ends_with($selector, 'img')) {
                         $new_selectors[] = '.ogb-banner';
                         $new_selectors[] = '.ogb-grid-media';
                         $new_selectors[] = '.ogb-list-media';
@@ -365,24 +369,24 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }
             }
 
-            if ( ! empty( $new_selectors ) ) {
-                $selectors_arr = array_merge( $selectors_arr, $new_selectors );
+            if (! empty($new_selectors)) {
+                $selectors_arr = array_merge($selectors_arr, $new_selectors);
             }
 
             return $selectors_arr;
-
         }
 
         /*
          * Avada: New image selectors for builder elements
          */
-        public function avada_sti_generated_selectors( $selectors_arr ) {
+        public function avada_sti_generated_selectors($selectors_arr)
+        {
 
             $new_selectors = array();
 
-            if ( ! empty( $selectors_arr ) ) {
-                foreach ( $selectors_arr as $selector ) {
-                    if ( STI_Helpers::str_ends_with( $selector, 'img') ) {
+            if (! empty($selectors_arr)) {
+                foreach ($selectors_arr as $selector) {
+                    if (STI_Helpers::str_ends_with($selector, 'img')) {
                         $new_selectors[] = '.fusion-image-wrapper';
                         $new_selectors[] = 'img:not(.fusion-image-wrapper img)';
                         $new_selectors[] = '.fusion-slider-container .background-image';
@@ -391,20 +395,20 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }
             }
 
-            unset( $selectors_arr[array_search('img', $selectors_arr)] );
+            unset($selectors_arr[array_search('img', $selectors_arr)]);
 
-            if ( ! empty( $new_selectors ) ) {
-                $selectors_arr = array_merge( $selectors_arr, $new_selectors );
+            if (! empty($new_selectors)) {
+                $selectors_arr = array_merge($selectors_arr, $new_selectors);
             }
 
             return $selectors_arr;
-
         }
 
         /*
          * Spectra: Update sharing buttons styles
          */
-        public function spectra_wp_enqueue_scripts() {
+        public function spectra_wp_enqueue_scripts()
+        {
 
             $script = "
                 document.addEventListener('stiLoaded', function() {
@@ -418,15 +422,15 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
                 }, false);
             ";
 
-            wp_add_inline_script( 'sti-script', $script);
-
+            wp_add_inline_script('sti-script', $script);
         }
 
         /*
          * SEOPress, on-site SEO
          */
-        public function option_seopress_social_option_name( $value, $option ) {
-            if ( isset( $_GET['img'] ) ) {
+        public function option_seopress_social_option_name($value, $option)
+        {
+            if (isset($_GET['img'])) {
                 $value['seopress_social_facebook_og'] = '0';
                 $value['seopress_social_twitter_card'] = '0';
             }
@@ -436,15 +440,21 @@ if ( ! class_exists( 'STI_Integrations' ) ) :
         /*
          * Register plugin settings
          */
-        public function get_settings( $id = false ) {
-            $sti_options = get_option( 'sti_settings' );
-            if ( $id ) {
-                return $sti_options[ $id ];
+        public function get_settings($id = false)
+        {
+            $wiss_options = get_option('wiss_settings');
+
+            // Return empty array if settings don't exist to prevent fatal errors
+            if (!$wiss_options) {
+                $wiss_options = array();
+            }
+
+            if ($id) {
+                return isset($wiss_options[$id]) ? $wiss_options[$id] : '';
             } else {
-                return $sti_options;
+                return $wiss_options;
             }
         }
-
     }
 
 endif;

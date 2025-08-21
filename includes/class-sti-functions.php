@@ -43,6 +43,17 @@ if (! class_exists('STI_Functions')) :
             add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'), 999999);
             add_action('wp_head', array($this, 'metatags'), 1);
 
+            // Add AJAX handlers for download functionality
+            add_action('wp_ajax_wiss_download_image', array($this, 'handle_download_request'));
+            add_action('wp_ajax_nopriv_wiss_download_image', array($this, 'handle_download_request'));
+
+            // Add AJAX handlers for storing image metadata
+            add_action('wp_ajax_wiss_store_image_meta', array($this, 'store_image_metadata'));
+            add_action('wp_ajax_nopriv_wiss_store_image_meta', array($this, 'store_image_metadata'));
+
+            // Handle unique image URL redirects
+            add_action('template_redirect', array($this, 'handle_unique_image_urls'), 1);
+
             // Alt twitter icon if enabled
             if ($this->get_settings('twitter_x') === 'true') {
                 add_filter('sti_svg_icons', array($this, 'sti_x_svg_icons'), 1);
@@ -83,12 +94,18 @@ if (! class_exists('STI_Functions')) :
          */
         public function get_settings($id = false)
         {
-            $sti_options = get_option('sti_settings');
-            if ($id && $sti_options) {
-                $val = isset($sti_options[$id]) ? $sti_options[$id] : '';
+            $wiss_options = get_option('wiss_settings');
+
+            // Return empty array if settings don't exist to prevent fatal errors
+            if (!$wiss_options) {
+                $wiss_options = array();
+            }
+
+            if ($id) {
+                $val = isset($wiss_options[$id]) ? $wiss_options[$id] : '';
                 return $val;
             } else {
-                return $sti_options;
+                return $wiss_options;
             }
         }
 
@@ -182,6 +199,8 @@ if (! class_exists('STI_Functions')) :
                 'appId'        => $settings['fb_app'],
                 'zIndex'       => $settings['zIndex'],
                 'custom_data'  => $custom_data,
+                'download_nonce' => wp_create_nonce('wiss_download_image'),
+                'store_meta_nonce' => wp_create_nonce('wiss_store_meta'),
             );
 
             /**
@@ -463,9 +482,210 @@ if (! class_exists('STI_Functions')) :
                 ? end($headers['Content-Length'])
                 : $headers['Content-Length'];
         }
+
+        /*
+         * Handle AJAX download requests with proper CORS and security
+         */
+        public function handle_download_request()
+        {
+            // Handle preflight OPTIONS request
+            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+                header('Access-Control-Allow-Origin: *');
+                header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+                header('Access-Control-Max-Age: 86400');
+                http_response_code(200);
+                exit;
+            }
+
+            // Set CORS headers for all requests
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+
+            // Verify nonce for security
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'wiss_download_image')) {
+                wp_die('Security check failed', 'Unauthorized', array('response' => 403));
+            }
+
+            $image_url = sanitize_url($_POST['image_url'] ?? '');
+            $file_name = sanitize_file_name($_POST['file_name'] ?? 'image');
+
+            // Validate image URL
+            if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
+                wp_die('Invalid image URL', 'Bad Request', array('response' => 400));
+            }
+
+            // Security: Only allow images from same domain or trusted sources
+            $parsed_url = parse_url($image_url);
+            $current_host = $_SERVER['HTTP_HOST'];
+
+            if ($parsed_url['host'] !== $current_host) {
+                // Check if it's a WordPress upload URL
+                $upload_dir = wp_upload_dir();
+                $upload_url = parse_url($upload_dir['baseurl']);
+
+                if ($parsed_url['host'] !== $upload_url['host']) {
+                    wp_die('Image source not allowed', 'Forbidden', array('response' => 403));
+                }
+            }
+
+            // Download image with proper error handling
+            $response = wp_safe_remote_get($image_url, array(
+                'timeout' => 30,
+                'headers' => array(
+                    'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
+                    'Accept' => 'image/*'
+                )
+            ));
+
+            if (is_wp_error($response)) {
+                wp_die('Failed to download image: ' . $response->get_error_message(), 'Download Error', array('response' => 500));
+            }
+
+            $response_code = wp_remote_retrieve_response_code($response);
+            if ($response_code !== 200) {
+                wp_die('Image not found or not accessible', 'Not Found', array('response' => $response_code));
+            }
+
+            $image_data = wp_remote_retrieve_body($response);
+            $content_type = wp_remote_retrieve_header($response, 'content-type');
+
+            // Validate image content
+            if (empty($image_data)) {
+                wp_die('Empty image data received', 'Invalid Content', array('response' => 400));
+            }
+
+            // Ensure proper file extension
+            if (!pathinfo($file_name, PATHINFO_EXTENSION)) {
+                $extension = $this->get_extension_from_mime_type($content_type);
+                $file_name .= $extension;
+            }
+
+            // Set proper headers for download
+            header('Content-Type: ' . $content_type);
+            header('Content-Disposition: attachment; filename="' . $file_name . '"');
+            header('Content-Length: ' . strlen($image_data));
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Expires: 0');
+
+            // Enhanced CORS headers for production compatibility
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
+            header('Access-Control-Max-Age: 86400'); // Cache preflight for 24 hours
+
+            // Output image data
+            echo $image_data;
+            wp_die(); // Properly terminate AJAX request
+        }
+
+        /*
+         * Get file extension from MIME type
+         */
+        private function get_extension_from_mime_type($mime_type)
+        {
+            $mime_to_ext = array(
+                'image/jpeg' => '.jpg',
+                'image/jpg' => '.jpg',
+                'image/png' => '.png',
+                'image/gif' => '.gif',
+                'image/webp' => '.webp',
+                'image/svg+xml' => '.svg',
+                'image/bmp' => '.bmp',
+                'image/tiff' => '.tiff'
+            );
+
+            return isset($mime_to_ext[$mime_type]) ? $mime_to_ext[$mime_type] : '.jpg';
+        }
+
+        /*
+         * Handle unique image URL redirects for social media sharing
+         */
+        public function handle_unique_image_urls()
+        {
+            // Check if this is a unique image URL request
+            if (!isset($_GET['wiss_image'])) {
+                return;
+            }
+
+            $image_hash = sanitize_text_field($_GET['wiss_image']);
+
+            // If we have image data in the URL, redirect to sharer.php
+            if (isset($_GET['img']) && isset($_GET['title'])) {
+                $sharer_url = WISS_URL . '/sharer.php?' . $_SERVER['QUERY_STRING'];
+                wp_safe_redirect($sharer_url, 302);
+                exit;
+            }
+
+            // Check if we have stored metadata for this image hash
+            $stored_metadata = get_transient('wiss_image_meta_' . $image_hash);
+
+            if ($stored_metadata && is_array($stored_metadata)) {
+                // Redirect to sharer.php with the stored metadata
+                $sharer_params = array(
+                    'url' => $stored_metadata['url'],
+                    'img' => $stored_metadata['img'],
+                    'title' => $stored_metadata['title'],
+                    'desc' => $stored_metadata['desc'],
+                    'network' => $stored_metadata['network'] ?? 'facebook',
+                    'image_id' => $image_hash
+                );
+
+                $sharer_url = WISS_URL . '/sharer.php?' . http_build_query($sharer_params);
+                wp_safe_redirect($sharer_url, 302);
+                exit;
+            }
+
+            // If no metadata found, continue with normal page load
+            // This allows the JavaScript to handle the sharing properly
+        }
+
+        /*
+         * Store image metadata for social media sharing
+         */
+        public function store_image_metadata()
+        {
+            // Verify nonce for security
+            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'wiss_store_meta')) {
+                wp_die('Security check failed', 'Unauthorized', array('response' => 403));
+            }
+
+            $image_hash = sanitize_text_field($_POST['image_hash'] ?? '');
+            $image_url = sanitize_url($_POST['image_url'] ?? '');
+            $title = sanitize_text_field($_POST['title'] ?? '');
+            $description = sanitize_textarea_field($_POST['description'] ?? '');
+            $page_url = sanitize_url($_POST['page_url'] ?? '');
+            $network = sanitize_key($_POST['network'] ?? 'facebook');
+
+            if (empty($image_hash) || empty($image_url)) {
+                wp_die('Missing required parameters', 'Bad Request', array('response' => 400));
+            }
+
+            // Store metadata as transient (expires in 24 hours)
+            $metadata = array(
+                'url' => $page_url,
+                'img' => str_replace(array('http://', 'https://'), '', $image_url),
+                'title' => $title,
+                'desc' => $description,
+                'network' => $network,
+                'timestamp' => time()
+            );
+
+            $stored = set_transient('wiss_image_meta_' . $image_hash, $metadata, 24 * HOUR_IN_SECONDS);
+
+            if ($stored) {
+                wp_send_json_success(array('message' => 'Metadata stored successfully'));
+            } else {
+                wp_send_json_error(array('message' => 'Failed to store metadata'));
+            }
+        }
     }
 
 
 endif;
 
-STI_Functions::instance();
+// Initialize STI_Functions on WordPress init to ensure all dependencies are loaded
+add_action('init', function () {
+    STI_Functions::instance();
+}, 5);

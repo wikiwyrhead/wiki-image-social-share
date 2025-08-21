@@ -1,36 +1,38 @@
 <?php
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (! defined('ABSPATH')) {
     exit;
 }
 
 
-if ( ! class_exists( 'STI_Helpers' ) ) :
+if (! class_exists('STI_Helpers')) :
 
     /**
      * Class for plugin help methods
      */
-    class STI_Helpers {
+    class STI_Helpers
+    {
 
         /**
          * Generate images css selector
          * @param array $condition Display conditions
          * @return string Css selector
          */
-        static public function generate_css_selector( $condition ) {
+        static public function generate_css_selector($condition)
+        {
 
             /**
              * Filter default image selector
              * @since 1.73
              * @param string Css selector for images to share
              */
-            $selector = apply_filters( 'sti_default_selector', 'img' );
+            $selector = apply_filters('sti_default_selector', 'img');
 
             $selectors_arr = array();
 
-            if ( is_array( $condition ) && ! empty( $condition ) ) {
-                foreach ( $condition as $condition_group ) {
-                    if ( $condition_group && !empty( $condition_group ) ) {
+            if (is_array($condition) && ! empty($condition)) {
+                foreach ($condition as $condition_group) {
+                    if ($condition_group && !empty($condition_group)) {
 
                         $group_selector = '';
                         $selector_in = array();
@@ -47,16 +49,16 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                         $image_url_contains = array();
                         $image_url_not_contains = array();
 
-                        foreach ( $condition_group as $condition_rule ) {
+                        foreach ($condition_group as $condition_rule) {
 
                             $rule_type = $condition_rule['param'];
                             $rule_operator = $condition_rule['operator'];
                             $rule_value = $condition_rule['value'];
 
-                            switch ( $rule_type ) {
+                            switch ($rule_type) {
 
                                 case 'selector':
-                                    if ( $rule_operator === 'equal' ) {
+                                    if ($rule_operator === 'equal') {
                                         $selector_in[] = $rule_value;
                                     } else {
                                         $selector_not[] = $rule_value;
@@ -64,8 +66,8 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                                     break;
 
                                 case 'image':
-                                    if ( $rule_value !== 'sti_any' ) {
-                                        if ( $rule_operator === 'equal' ) {
+                                    if ($rule_value !== 'sti_any') {
+                                        if ($rule_operator === 'equal') {
                                             $image_id_in[] = $rule_value;
                                         } else {
                                             $image_id_not[] = $rule_value;
@@ -74,8 +76,8 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                                     break;
 
                                 case 'image_format':
-                                    if ( $rule_value !== 'sti_any' ) {
-                                        if ( $rule_operator === 'equal' ) {
+                                    if ($rule_value !== 'sti_any') {
+                                        if ($rule_operator === 'equal') {
                                             $image_format_in[] = $rule_value;
                                         } else {
                                             $image_format_not[] = $rule_value;
@@ -84,77 +86,75 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                                     break;
 
                                 case 'image_url':
-                                    if ( $rule_operator === 'equal' ) {
+                                    if ($rule_operator === 'equal') {
                                         $image_url_equal[] = $rule_value;
-                                    } elseif( $rule_operator === 'not_equal' ) {
+                                    } elseif ($rule_operator === 'not_equal') {
                                         $image_url_not_equal[] = $rule_value;
-                                    } elseif( $rule_operator === 'contains' ) {
+                                    } elseif ($rule_operator === 'contains') {
                                         $image_url_contains[] = $rule_value;
                                     } else {
                                         $image_url_not_contains[] = $rule_value;
                                     }
                                     break;
-
                             }
-
                         }
 
-                        if ( ! empty( $selector_in ) ) {
-                            $group_selector .= implode( '', $selector_in );
+                        if (! empty($selector_in)) {
+                            $group_selector .= implode('', $selector_in);
                         } else {
                             $group_selector .= 'img';
                         }
 
-                        if ( ! empty( $image_id_in ) ) {
-                            foreach ( $image_id_in as $image_id_in_item ) {
+                        if (! empty($image_id_in)) {
+                            foreach ($image_id_in as $image_id_in_item) {
                                 $group_selector .= '.wp-image-' . $image_id_in_item;
                             }
                         }
 
-                        if ( ! empty( $image_format_in ) ) {
-                            foreach ( $image_format_in as $image_format_in_item ) {
+                        if (! empty($image_format_in)) {
+                            foreach ($image_format_in as $image_format_in_item) {
                                 $group_selector .= "[src$='." . $image_format_in_item . "']";
                             }
                         }
 
-                        if ( ! empty( $image_url_equal ) ) {
-                            foreach ( $image_url_equal as $image_url_equal_item ) {
+                        if (! empty($image_url_equal)) {
+                            foreach ($image_url_equal as $image_url_equal_item) {
                                 $group_selector .= "[src='" . $image_url_equal_item . "']";
                             }
                         }
 
-                        if ( ! empty( $image_url_contains ) ) {
-                            foreach ( $image_url_contains as $image_url_contains_item ) {
+                        if (! empty($image_url_contains)) {
+                            foreach ($image_url_contains as $image_url_contains_item) {
                                 $group_selector .= "[src*='" . $image_url_contains_item . "']";
                             }
                         }
 
-                        if ( ! empty( $image_url_not_equal ) ) {
-                            foreach ( $image_url_not_equal as $image_url_not_equal_item ) {
+                        if (! empty($image_url_not_equal)) {
+                            foreach ($image_url_not_equal as $image_url_not_equal_item) {
                                 $group_selector .= ":not([src='" . $image_url_not_equal_item . "'])";
                             }
                         }
 
-                        if ( ! empty( $image_url_not_contains ) ) {
-                            foreach ( $image_url_not_contains as $image_url_not_contains_item ) {
+                        if (! empty($image_url_not_contains)) {
+                            foreach ($image_url_not_contains as $image_url_not_contains_item) {
                                 $group_selector .= ":not([src*='" . $image_url_not_contains_item . "'])";
                             }
                         }
 
-                        if ( ! empty( $selector_not ) ) {
-                            foreach ( $selector_not as $selector_not_item ) {
+                        if (! empty($selector_not)) {
+                            foreach ($selector_not as $selector_not_item) {
                                 $group_selector .= ':not(' . $selector_not_item . ')';
                             }
                         }
 
-                        if ( ! empty( $image_id_not ) ) {
-                            foreach ( $image_id_not as $image_id_not_item ) {
+                        if (! empty($image_id_not)) {
+                            foreach ($image_id_not as $image_id_not_item) {
                                 $group_selector .= ':not(.wp-image-' . $image_id_not_item . ')';
                             }
                         }
 
-                        if ( ! empty( $image_format_not ) ) {
-                            foreach ( $image_format_not as $image_format_not_item ) {
+                        if (! empty($image_format_not)) {
+                            foreach ($image_format_not as $image_format_not_item) {
                                 $group_selector .= ":not([src$='." . $image_format_not_item . "'])";
                             }
                         }
@@ -165,12 +165,11 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                          * @param string $group_selector Group selector
                          * @param array $condition_group Array of group conditionsrules
                          */
-                        $group_selector = apply_filters( 'sti_generated_group_selector', $group_selector, $condition_group );
+                        $group_selector = apply_filters('sti_generated_group_selector', $group_selector, $condition_group);
 
-                        if ( $group_selector ) {
+                        if ($group_selector) {
                             $selectors_arr[] = $group_selector;
                         }
-
                     }
                 }
             }
@@ -180,14 +179,13 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
              * @since 1.73
              * @param array Css selectors
              */
-            $selectors_arr = apply_filters( 'sti_generated_selectors', $selectors_arr, $condition );
+            $selectors_arr = apply_filters('sti_generated_selectors', $selectors_arr, $condition);
 
-            if ( ! empty( $selectors_arr ) ) {
-                $selector = implode( ', ', $selectors_arr );
+            if (! empty($selectors_arr)) {
+                $selector = implode(', ', $selectors_arr);
             }
 
             return $selector;
-
         }
 
         /**
@@ -196,9 +194,10 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * @param string $needle String to search for
          * @return bool
          */
-        static public function str_ends_with( $haystack, $needle ) {
-            $needle_len = strlen( $needle );
-            return ( $needle_len === 0 || 0 === substr_compare( $haystack, $needle, - $needle_len ) );
+        static public function str_ends_with($haystack, $needle)
+        {
+            $needle_len = strlen($needle);
+            return ($needle_len === 0 || 0 === substr_compare($haystack, $needle, -$needle_len));
         }
 
         /**
@@ -207,68 +206,69 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * @param string $platform Target platform (whatsapp, facebook, twitter, etc.)
          * @return array Validation result with status and messages
          */
-        static public function validate_social_image( $image_url, $platform = 'general' ) {
+        static public function validate_social_image($image_url, $platform = 'general')
+        {
             $result = array(
                 'valid' => true,
                 'messages' => array(),
                 'warnings' => array()
             );
 
-            if ( empty( $image_url ) ) {
+            if (empty($image_url)) {
                 $result['valid'] = false;
                 $result['messages'][] = 'Image URL is required';
                 return $result;
             }
 
             // Get image dimensions and file info
-            $image_info = @getimagesize( $image_url );
-            if ( !$image_info ) {
+            $image_info = @getimagesize($image_url);
+            if (!$image_info) {
                 $result['valid'] = false;
                 $result['messages'][] = 'Unable to retrieve image information';
                 return $result;
             }
 
-            list( $width, $height, $type ) = $image_info;
+            list($width, $height, $type) = $image_info;
             $aspect_ratio = $width / $height;
 
             // Platform-specific validation
-            switch ( $platform ) {
+            switch ($platform) {
                 case 'whatsapp':
                     // WhatsApp requirements
-                    if ( $width < 200 || $height < 200 ) {
+                    if ($width < 200 || $height < 200) {
                         $result['valid'] = false;
                         $result['messages'][] = 'WhatsApp requires minimum 200x200px images';
                     }
-                    
+
                     $valid_ratios = [1.0, 1.78, 1.91]; // 1:1, 16:9, 1.91:1
                     $ratio_tolerance = 0.1;
                     $ratio_valid = false;
-                    foreach ( $valid_ratios as $valid_ratio ) {
-                        if ( abs( $aspect_ratio - $valid_ratio ) <= $ratio_tolerance ) {
+                    foreach ($valid_ratios as $valid_ratio) {
+                        if (abs($aspect_ratio - $valid_ratio) <= $ratio_tolerance) {
                             $ratio_valid = true;
                             break;
                         }
                     }
-                    if ( !$ratio_valid ) {
+                    if (!$ratio_valid) {
                         $result['warnings'][] = 'WhatsApp prefers aspect ratios of 1:1, 16:9, or 1.91:1';
                     }
                     break;
 
                 case 'facebook':
-                    if ( $width < 600 || $height < 315 ) {
+                    if ($width < 600 || $height < 315) {
                         $result['warnings'][] = 'Facebook recommends minimum 600x315px for large image format';
                     }
-                    if ( $width < 1200 || $height < 630 ) {
+                    if ($width < 1200 || $height < 630) {
                         $result['warnings'][] = 'Facebook recommends 1200x630px for optimal display';
                     }
                     break;
 
                 case 'twitter':
-                    if ( $width < 300 || $height < 157 ) {
+                    if ($width < 300 || $height < 157) {
                         $result['valid'] = false;
                         $result['messages'][] = 'Twitter requires minimum 300x157px images';
                     }
-                    if ( $width > 4096 || $height > 4096 ) {
+                    if ($width > 4096 || $height > 4096) {
                         $result['valid'] = false;
                         $result['messages'][] = 'Twitter maximum image size is 4096x4096px';
                     }
@@ -277,22 +277,22 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
 
             // General validation
             $supported_types = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP];
-            if ( !in_array( $type, $supported_types ) ) {
+            if (!in_array($type, $supported_types)) {
                 $result['valid'] = false;
                 $result['messages'][] = 'Unsupported image format. Use JPG, PNG, or WEBP';
             }
 
             // File size check (approximate)
-            $headers = @get_headers( $image_url, 1 );
-            if ( isset( $headers['Content-Length'] ) ) {
+            $headers = @get_headers($image_url, 1);
+            if (isset($headers['Content-Length'])) {
                 $file_size = (int) $headers['Content-Length'];
-                
-                if ( $platform === 'whatsapp' && $file_size > 300000 ) { // 300KB
+
+                if ($platform === 'whatsapp' && $file_size > 300000) { // 300KB
                     $result['warnings'][] = 'WhatsApp recommends images under 300KB for better performance';
-                } elseif ( $platform === 'facebook' && $file_size > 8000000 ) { // 8MB
+                } elseif ($platform === 'facebook' && $file_size > 8000000) { // 8MB
                     $result['valid'] = false;
                     $result['messages'][] = 'Facebook maximum file size is 8MB';
-                } elseif ( $platform === 'twitter' && $file_size > 5000000 ) { // 5MB
+                } elseif ($platform === 'twitter' && $file_size > 5000000) { // 5MB
                     $result['valid'] = false;
                     $result['messages'][] = 'Twitter maximum file size is 5MB';
                 }
@@ -307,68 +307,69 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * @param string $platform Target platform
          * @return string Generated meta tags HTML
          */
-        static public function generate_social_meta_tags( $data, $platform = 'general' ) {
+        static public function generate_social_meta_tags($data, $platform = 'general')
+        {
             $meta_tags = '';
-            
+
             // Required data validation
-            if ( empty( $data['image'] ) || empty( $data['title'] ) ) {
+            if (empty($data['image']) || empty($data['title'])) {
                 return $meta_tags;
             }
 
             // Sanitize data
-            $image = esc_url( $data['image'] );
-            $title = esc_attr( $data['title'] );
-            $description = esc_attr( $data['description'] ?? '' );
-            $url = esc_url( $data['url'] ?? '' );
-            $site_name = esc_attr( $data['site_name'] ?? '' );
+            $image = esc_url($data['image']);
+            $title = esc_attr($data['title']);
+            $description = esc_attr($data['description'] ?? '');
+            $url = esc_url($data['url'] ?? '');
+            $site_name = esc_attr($data['site_name'] ?? '');
 
             // Basic Open Graph tags
             $meta_tags .= '<meta property="og:type" content="article" />' . "\n";
             $meta_tags .= '<meta property="og:title" content="' . $title . '" />' . "\n";
             $meta_tags .= '<meta property="og:image" itemprop="image" content="' . $image . '" />' . "\n";
-            
-            if ( strpos( $image, 'https://' ) === 0 ) {
+
+            if (strpos($image, 'https://') === 0) {
                 $meta_tags .= '<meta property="og:image:secure_url" content="' . $image . '" />' . "\n";
             }
-            
-            if ( $description ) {
+
+            if ($description) {
                 $meta_tags .= '<meta property="og:description" content="' . $description . '" />' . "\n";
             }
-            
-            if ( $url ) {
+
+            if ($url) {
                 $meta_tags .= '<meta property="og:url" content="' . $url . '" />' . "\n";
             }
-            
-            if ( $site_name ) {
+
+            if ($site_name) {
                 $meta_tags .= '<meta property="og:site_name" content="' . $site_name . '" />' . "\n";
             }
-            
+
             $meta_tags .= '<meta property="og:updated_time" content="' . time() . '" />' . "\n";
 
             // Platform-specific tags
-            if ( $platform === 'twitter' || $platform === 'general' ) {
+            if ($platform === 'twitter' || $platform === 'general') {
                 $meta_tags .= '<meta name="twitter:card" content="summary_large_image" />' . "\n";
                 $meta_tags .= '<meta name="twitter:title" content="' . $title . '" />' . "\n";
                 $meta_tags .= '<meta name="twitter:image" content="' . $image . '" />' . "\n";
-                
-                if ( $description ) {
+
+                if ($description) {
                     $meta_tags .= '<meta name="twitter:description" content="' . $description . '" />' . "\n";
                     $meta_tags .= '<meta name="twitter:image:alt" content="' . $description . '" />' . "\n";
                 }
-                
-                if ( $url ) {
+
+                if ($url) {
                     $meta_tags .= '<meta name="twitter:url" content="' . $url . '" />' . "\n";
                 }
             }
 
             // Add image dimensions if available
-            $image_info = @getimagesize( $image );
-            if ( $image_info ) {
-                list( $width, $height ) = $image_info;
+            $image_info = @getimagesize($image);
+            if ($image_info) {
+                list($width, $height) = $image_info;
                 $meta_tags .= '<meta property="og:image:width" content="' . $width . '" />' . "\n";
                 $meta_tags .= '<meta property="og:image:height" content="' . $height . '" />' . "\n";
-                
-                if ( $platform === 'twitter' || $platform === 'general' ) {
+
+                if ($platform === 'twitter' || $platform === 'general') {
                     $meta_tags .= '<meta name="twitter:image:width" content="' . $width . '" />' . "\n";
                     $meta_tags .= '<meta name="twitter:image:height" content="' . $height . '" />' . "\n";
                 }
@@ -382,8 +383,9 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * @param string $user_agent User agent string
          * @return string|false Platform name or false if not detected
          */
-        static public function detect_social_crawler( $user_agent = '' ) {
-            if ( empty( $user_agent ) ) {
+        static public function detect_social_crawler($user_agent = '')
+        {
+            if (empty($user_agent)) {
                 $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
             }
 
@@ -402,8 +404,8 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                 'Googlebot' => 'google'
             );
 
-            foreach ( $crawlers as $crawler => $platform ) {
-                if ( strpos( $user_agent, $crawler ) !== false ) {
+            foreach ($crawlers as $crawler => $platform) {
+                if (strpos($user_agent, $crawler) !== false) {
                     return $platform;
                 }
             }
@@ -415,7 +417,8 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * Get the array of available svg icons
          * @return array
          */
-        static public function get_svg_icons() {
+        static public function get_svg_icons()
+        {
 
             $icon_arr = array(
                 'facebook' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/></svg>',
@@ -432,6 +435,7 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
                 'odnoklassniki' => '<svg enable-background="new 0 0 30 30" version="1.1" viewBox="0 0 30 30" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M22,15c-1,0-3,2-7,2s-6-2-7-2c-1.104,0-2,0.896-2,2c0,1,0.568,1.481,1,1.734C8.185,19.427,12,21,12,21l-4.25,5.438  c0,0-0.75,0.935-0.75,1.562c0,1.104,0.896,2,2,2c1.021,0,1.484-0.656,1.484-0.656S14.993,23.993,15,24  c0.007-0.007,4.516,5.344,4.516,5.344S19.979,30,21,30c1.104,0,2-0.896,2-2c0-0.627-0.75-1.562-0.75-1.562L18,21  c0,0,3.815-1.573,5-2.266C23.432,18.481,24,18,24,17C24,15.896,23.104,15,22,15z" id="K"/><path d="M15,0c-3.866,0-7,3.134-7,7s3.134,7,7,7c3.865,0,7-3.134,7-7S18.865,0,15,0z M15,10.5c-1.933,0-3.5-1.566-3.5-3.5  c0-1.933,1.567-3.5,3.5-3.5c1.932,0,3.5,1.567,3.5,3.5C18.5,8.934,16.932,10.5,15,10.5z" id="O"/></svg>',
                 'x' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>',
                 'mobile' => '<svg enable-background="new 0 0 64 64" version="1.1" viewBox="0 0 64 64" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M48,39.26c-2.377,0-4.515,1-6.033,2.596L24.23,33.172c0.061-0.408,0.103-0.821,0.103-1.246c0-0.414-0.04-0.818-0.098-1.215  l17.711-8.589c1.519,1.609,3.667,2.619,6.054,2.619c4.602,0,8.333-3.731,8.333-8.333c0-4.603-3.731-8.333-8.333-8.333  s-8.333,3.73-8.333,8.333c0,0.414,0.04,0.817,0.098,1.215l-17.711,8.589c-1.519-1.609-3.666-2.619-6.054-2.619  c-4.603,0-8.333,3.731-8.333,8.333c0,4.603,3.73,8.333,8.333,8.333c2.377,0,4.515-1,6.033-2.596l17.737,8.684  c-0.061,0.407-0.103,0.821-0.103,1.246c0,4.603,3.731,8.333,8.333,8.333s8.333-3.73,8.333-8.333C56.333,42.99,52.602,39.26,48,39.26  z"/></svg>',
+                'download' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 8V6h2v4h3l-4 4-4-4h3zm6 7H7v-2h10v2z"/></svg>',
             );
 
             /**
@@ -439,10 +443,9 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
              * @since 1.31
              * @param array $icon_arr Array of icons
              */
-            $icon_arr = apply_filters( 'sti_svg_icons', $icon_arr );
+            $icon_arr = apply_filters('sti_svg_icons', $icon_arr);
 
             return $icon_arr;
-
         }
 
         /**
@@ -450,20 +453,19 @@ if ( ! class_exists( 'STI_Helpers' ) ) :
          * @param string $icon_name Icon name
          * @return string
          */
-        static public function get_svg( $icon_name ) {
+        static public function get_svg($icon_name)
+        {
 
             $icon = '';
 
             $icon_arr = STI_Helpers::get_svg_icons();
 
-            if ( $icon_name && isset( $icon_arr[$icon_name] ) ) {
+            if ($icon_name && isset($icon_arr[$icon_name])) {
                 $icon = $icon_arr[$icon_name];
             }
 
             return $icon;
-
         }
-
     }
 
 endif;

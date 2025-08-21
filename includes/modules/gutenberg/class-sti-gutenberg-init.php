@@ -13,7 +13,8 @@ if (!class_exists('STI_Gutenberg_Init')) :
     /**
      * Class for main plugin functions
      */
-    class STI_Gutenberg_Init {
+    class STI_Gutenberg_Init
+    {
 
         /**
          * @var STI_Gutenberg_Init The single instance of the class
@@ -39,45 +40,71 @@ if (!class_exists('STI_Gutenberg_Init')) :
         /**
          * Constructor
          */
-        public function __construct() {
+        public function __construct()
+        {
 
-            add_action( 'init', array( $this, 'register_block' ) );
+            add_action('init', array($this, 'register_block'));
 
-            if ( version_compare( get_bloginfo('version'),'5.8', '>=' ) ) {
-                add_filter( 'block_categories_all', array( $this, 'add_block_category' ) );
+            if (version_compare(get_bloginfo('version'), '5.8', '>=')) {
+                add_filter('block_categories_all', array($this, 'add_block_category'));
             } else {
-                add_filter( 'block_categories', array( $this, 'add_block_category' ) );
+                add_filter('block_categories', array($this, 'add_block_category'));
             }
 
-            add_action( 'init', array( $this, 'set_script_translations' ) );
-
+            add_action('init', array($this, 'set_script_translations'));
         }
 
         /*
          * Register gutenberg blocks
          */
-        public function register_block() {
+        public function register_block()
+        {
 
             global $pagenow;
 
-            $scripts = array( 'wp-blocks', 'wp-editor', 'wp-i18n' );
-            if ( $pagenow && $pagenow === 'widgets.php' && version_compare( get_bloginfo('version'),'5.8', '>=' ) ) {
-                $scripts = array( 'wp-blocks', 'wp-edit-widgets', 'wp-i18n' );
+            $scripts = array('wp-blocks', 'wp-editor', 'wp-i18n');
+            if ($pagenow && $pagenow === 'widgets.php' && version_compare(get_bloginfo('version'), '5.8', '>=')) {
+                $scripts = array('wp-blocks', 'wp-edit-widgets', 'wp-i18n');
             }
 
-            $options_array = STI_Admin_Options::options_array();
+            // Ensure admin options class is available
             $available_buttons = array();
 
-            if ( $options_array ) {
-                foreach( $options_array as $option_tab ) {
-                    foreach ( $option_tab as $option_array ) {
-                        if ( isset( $option_array['id'] ) && $option_array['id'] === 'buttons' && isset( $option_array['choices'] ) ) {
-                            foreach ($option_array['choices'] as $choices_key => $choices_val) {
-                                $available_buttons[] = $choices_key;
+            if (!class_exists('STI_Admin_Options')) {
+                // Load admin options class if not available
+                if (file_exists(WISS_DIR . '/includes/admin/class-sti-admin-options.php')) {
+                    include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
+                }
+            }
+
+            // Get options array with fallback
+            if (class_exists('STI_Admin_Options') && method_exists('STI_Admin_Options', 'options_array')) {
+                $options_array = STI_Admin_Options::options_array();
+
+                if ($options_array) {
+                    foreach ($options_array as $option_tab) {
+                        foreach ($option_tab as $option_array) {
+                            if (isset($option_array['id']) && $option_array['id'] === 'buttons' && isset($option_array['choices'])) {
+                                foreach ($option_array['choices'] as $choices_key => $choices_val) {
+                                    $available_buttons[] = $choices_key;
+                                }
                             }
                         }
                     }
                 }
+            } else {
+                // Fallback: Default available buttons when admin class is not available
+                $available_buttons = array(
+                    'facebook',
+                    'twitter',
+                    'linkedin',
+                    'pinterest',
+                    'whatsapp',
+                    'telegram',
+                    'reddit',
+                    'tumblr',
+                    'download'
+                );
             }
 
             wp_register_script(
@@ -90,19 +117,19 @@ if (!class_exists('STI_Gutenberg_Init')) :
             wp_register_style(
                 'sti-gutenberg-styles-editor',
                 STI_URL . '/assets/css/sti.css',
-                array( 'wp-edit-blocks' ),
+                array('wp-edit-blocks'),
                 STI_VER
             );
 
-            register_block_type( 'share-this-image/sharing-buttons', array(
+            register_block_type('share-this-image/sharing-buttons', array(
                 'apiVersion' => 2,
                 'editor_script' => 'sti-gutenberg-buttons',
                 'editor_style' => 'sti-gutenberg-styles-editor',
-                'render_callback' => array( $this, 'sharing_buttons_dynamic_render_callback' ),
+                'render_callback' => array($this, 'sharing_buttons_dynamic_render_callback'),
                 'attributes'      =>  array(
                     'available_buttons'   =>  array(
                         'type'    => 'string',
-                        'default' => implode( ', ', $available_buttons )
+                        'default' => implode(', ', $available_buttons)
                     ),
                     'buttons'   =>  array(
                         'type'    => 'string',
@@ -129,43 +156,43 @@ if (!class_exists('STI_Gutenberg_Init')) :
                         'default' => 'none',
                     ),
                 ),
-            ) );
-
+            ));
         }
 
         /*
          * Render dynamic content
          */
-        public function sharing_buttons_dynamic_render_callback( $block_attributes, $content ) {
+        public function sharing_buttons_dynamic_render_callback($block_attributes, $content)
+        {
 
             $shortcode = '';
-            $available_params = array( 'buttons', 'image', 'title', 'description', 'url' );
+            $available_params = array('buttons', 'image', 'title', 'description', 'url');
 
-            if ( $block_attributes ) {
-                foreach ( $block_attributes as $block_attributes_name => $block_attributes_val ) {
-                    if ( gettype( $block_attributes_val ) === 'string' && array_search( $block_attributes_name, $available_params ) !== false ) {
-                        $shortcode .= $block_attributes_name . '="' . htmlspecialchars( $block_attributes_val ) . '" ';
+            if ($block_attributes) {
+                foreach ($block_attributes as $block_attributes_name => $block_attributes_val) {
+                    if (gettype($block_attributes_val) === 'string' && array_search($block_attributes_name, $available_params) !== false) {
+                        $shortcode .= $block_attributes_name . '="' . htmlspecialchars($block_attributes_val) . '" ';
                     }
                 }
             }
 
             $shortcode = '[sti_buttons ' . $shortcode . ']';
 
-            $buttons = do_shortcode( $shortcode );
+            $buttons = do_shortcode($shortcode);
 
-            if ( isset( $block_attributes['alignment'] ) && $block_attributes['alignment'] !== 'none' ) {
-                $buttons = '<div class="sti-align-' . htmlspecialchars( $block_attributes['alignment'] ) . '">' . $buttons . '</div>';
+            if (isset($block_attributes['alignment']) && $block_attributes['alignment'] !== 'none') {
+                $buttons = '<div class="sti-align-' . htmlspecialchars($block_attributes['alignment']) . '">' . $buttons . '</div>';
             }
 
             return $buttons;
-
         }
 
         /*
          * Add new blocks category
          */
-        public function add_block_category( $categories ) {
-            if ( is_array( $categories ) ) {
+        public function add_block_category($categories)
+        {
+            if (is_array($categories)) {
                 $categories = array_merge(
                     $categories,
                     array(
@@ -183,10 +210,10 @@ if (!class_exists('STI_Gutenberg_Init')) :
         /*
          * Set translations script
          */
-        public function set_script_translations() {
-            wp_set_script_translations( 'sti-gutenberg-buttons', 'share-this-image' );
+        public function set_script_translations()
+        {
+            wp_set_script_translations('sti-gutenberg-buttons', 'share-this-image');
         }
-
     }
 
 

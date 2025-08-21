@@ -51,8 +51,6 @@ if (! class_exists('STI_Admin')) :
                 $default_settings = STI_Admin_Options::get_default_settings();
                 update_option('wiss_settings', $default_settings);
             }
-
-            add_filter('submenu_file', array($this, 'submenu_file'), 10, 2);
         }
 
         /*
@@ -77,9 +75,8 @@ if (! class_exists('STI_Admin')) :
          */
         public function add_admin_page()
         {
-            add_menu_page(esc_html__('Share Image Options', 'share-this-image'), esc_html__('Share Images', 'share-this-image'), 'manage_options', 'sti-options', false, 'dashicons-format-image');
-            add_submenu_page('sti-options', __('Settings', 'share-this-image'), __('Settings', 'share-this-image'), 'manage_options', 'sti-options', array($this, 'display_admin_page'));
-            add_submenu_page('sti-options', __('Pro Features', 'share-this-image'),  __('Pro Features', 'share-this-image'), 'manage_options', admin_url('admin.php?page=sti-options&tab=premium'));
+            add_menu_page(esc_html__('Wiki Image Social Share', 'wiki-image-social-share'), esc_html__('Image Sharing', 'wiki-image-social-share'), 'manage_options', 'sti-options', false, 'dashicons-format-image');
+            add_submenu_page('sti-options', __('Settings', 'wiki-image-social-share'), __('Settings', 'wiki-image-social-share'), 'manage_options', 'sti-options', array($this, 'display_admin_page'));
         }
 
         /**
@@ -138,45 +135,31 @@ if (! class_exists('STI_Admin')) :
 
             <div class="wrap">
 
-                <?php if ($current_tab === 'premium'): ?>
+                <h1 class="sti-title"><?php esc_html_e('Wiki Image Social Share Settings', 'wiki-image-social-share'); ?></h1>
 
-                    <h1 class="sti-title"><?php esc_html_e('Pro Features', 'share-this-image'); ?></h1>
+                <?php echo $tabs_html; ?>
 
-                    <form action="" name="sti_form" id="sti_form" class="sti_form form-tab-<?php echo $current_tab; ?>" method="post">
+                <form action="" name="sti_form" id="sti_form" class="sti_form form-tab-<?php echo $current_tab; ?>" method="post">
 
-                        <?php new STI_Admin_Page_Premium(); ?>
+                    <div class="sti-settings">
 
-                    </form>
+                        <div class="sti-settings-inner">
 
-                <?php else: ?>
-
-                    <h1 class="sti-title"><?php esc_html_e('Settings', 'share-this-image'); ?></h1>
-
-                    <?php echo $tabs_html; ?>
-
-                    <form action="" name="sti_form" id="sti_form" class="sti_form form-tab-<?php echo $current_tab; ?>" method="post">
-
-                        <div class="sti-settings">
-
-                            <div class="sti-settings-inner">
-
-                                <?php
-                                foreach ($tabs as $name => $label) {
-                                    new STI_Admin_Fields($name, $sti_options);
-                                }
-                                ?>
-
-                            </div>
+                            <?php
+                            foreach ($tabs as $name => $label) {
+                                new STI_Admin_Fields($name, $sti_options);
+                            }
+                            ?>
 
                         </div>
 
-                        <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
+                    </div>
 
-                        <p class="submit"><input name="Submit" type="submit" class="button-primary" value="<?php esc_attr_e('Save Changes', 'share-this-image'); ?>" /></p>
+                    <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
 
-                    </form>
+                    <p class="submit"><input name="Submit" type="submit" class="button-primary" value="<?php esc_attr_e('Save Changes', 'wiki-image-social-share'); ?>" /></p>
 
-                <?php endif; ?>
+                </form>
 
             </div>
 
@@ -201,22 +184,11 @@ if (! class_exists('STI_Admin')) :
                 wp_enqueue_script('jquery-ui-sortable');
                 wp_enqueue_media();
                 wp_enqueue_script('wiss-admin-js', WISS_URL . '/assets/js/admin' . $suffix . '.js', array('jquery', 'wiss-select2', 'jquery-ui-sortable'), WISS_VER);
-                wp_localize_script('sti-admin-js', 'sti_ajax_object', array(
+                wp_localize_script('wiss-admin-js', 'sti_ajax_object', array(
                     'ajax_nonce' => wp_create_nonce('ajax_nonce'),
                     'ajaxurl' => admin_url('admin-ajax.php', 'relative'),
                 ));
             }
-        }
-
-        /*
-         * Change current class for premium tab
-         */
-        public function submenu_file($submenu_file, $parent_file)
-        {
-            if ($parent_file === 'sti-options' && isset($_GET['tab']) && $_GET['tab'] === 'premium') {
-                $submenu_file = admin_url('admin.php?page=sti-options&tab=premium');
-            }
-            return $submenu_file;
         }
     }
 

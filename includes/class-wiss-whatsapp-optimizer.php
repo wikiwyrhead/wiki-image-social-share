@@ -177,7 +177,7 @@ if (!class_exists('WISS_WhatsApp_Optimizer')) :
             }
 
             $validation = $this->validate_image($image_url);
-            
+
             // If image is already valid, add cache-busting parameter
             if ($validation['valid']) {
                 return $this->add_cache_buster($image_url);
@@ -198,20 +198,20 @@ if (!class_exists('WISS_WhatsApp_Optimizer')) :
             }
 
             $meta_tags = '';
-            
+
             // Essential WhatsApp meta tags
             $meta_tags .= '<meta property="og:image:type" content="image/jpeg" />' . "\n";
             $meta_tags .= '<meta property="og:locale" content="en_US" />' . "\n";
             $meta_tags .= '<meta name="robots" content="index,follow" />' . "\n";
-            
+
             // Facebook app ID (WhatsApp uses Facebook's infrastructure)
             $meta_tags .= '<meta property="fb:app_id" content="966242223397117" />' . "\n";
-            
+
             // Additional structured data
             if (!empty($data['title'])) {
                 $meta_tags .= '<meta property="og:title" content="' . esc_attr($data['title']) . '" />' . "\n";
             }
-            
+
             if (!empty($data['description'])) {
                 $meta_tags .= '<meta property="og:description" content="' . esc_attr($data['description']) . '" />' . "\n";
             }
