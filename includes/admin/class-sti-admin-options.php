@@ -93,7 +93,9 @@ if (! class_exists('STI_Admin_Options')) :
         static public function update_settings()
         {
 
-            $options = self::options_array(false);
+            // Only process fields from the active tab to avoid resetting other tabs
+            $active_tab = isset($_GET['tab']) && is_string($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'buttons';
+            $options = self::options_array($active_tab);
 
             $settings = self::get_settings();
 
@@ -116,13 +118,21 @@ if (! class_exists('STI_Admin_Options')) :
 
                     if ($values['type'] === 'checkbox') {
                         foreach ($values['choices'] as $key => $val) {
-                            $settings[$values['id']][$key] = (string) sanitize_text_field($_POST[$values['id']][$key]);
+                            $settings[$values['id']][$key] = isset($_POST[$values['id']][$key])
+                                ? (string) sanitize_text_field($_POST[$values['id']][$key])
+                                : 'false';
                         }
                         continue;
                     }
 
                     if ($values['type'] === 'textarea' && isset($values['allow_tags'])) {
-                        $settings[$values['id']] = (string) addslashes(wp_kses(stripslashes($_POST[$values['id']]), STI_Admin_Helpers::get_kses($values['allow_tags'])));
+                        $raw_value = isset($_POST[$values['id']]) ? (string) $_POST[$values['id']] : '';
+                        $settings[$values['id']] = (string) addslashes(
+                            wp_kses(
+                                stripslashes($raw_value),
+                                STI_Admin_Helpers::get_kses($values['allow_tags'])
+                            )
+                        );
                         continue;
                     }
 
@@ -134,14 +144,32 @@ if (! class_exists('STI_Admin_Options')) :
 
                     if ($values['type'] === 'sharing_buttons') {
 
-                        $table_keys = array_map('sanitize_text_field', array_keys($_POST[$values['id']]));
-                        $sorted_table = array_merge(array_flip($table_keys), $values['choices']);
-                        $table_options = array();
+                        $posted_buttons = (isset($_POST[$values['id']]) && is_array($_POST[$values['id']]))
+                            ? $_POST[$values['id']]
+                            : array();
 
+                        $posted_order = array_map('sanitize_text_field', array_keys($posted_buttons));
+
+                        // Build a sorted table: first any posted keys (that exist in choices), then remaining choices
+                        $sorted_table = array();
+                        foreach ($posted_order as $btn_key) {
+                            if (isset($values['choices'][$btn_key])) {
+                                $sorted_table[$btn_key] = $values['choices'][$btn_key];
+                            }
+                        }
+                        foreach ($values['choices'] as $btn_key => $opts_arr) {
+                            if (!isset($sorted_table[$btn_key])) {
+                                $sorted_table[$btn_key] = $opts_arr;
+                            }
+                        }
+
+                        $table_options = array();
                         foreach ($sorted_table as $key => $opts_arr) {
                             foreach ($opts_arr as $opt_name => $opt_val) {
                                 if ($opt_name === 'name') continue;
-                                $table_options[$key][$opt_name] = isset($_POST[$values['id']][$key][$opt_name]) ? (string) sanitize_text_field($_POST[$values['id']][$key][$opt_name]) : 'false';
+                                $table_options[$key][$opt_name] = isset($posted_buttons[$key][$opt_name])
+                                    ? (string) sanitize_text_field($posted_buttons[$key][$opt_name])
+                                    : 'false';
                             }
                         }
 

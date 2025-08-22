@@ -82,88 +82,93 @@ if (! class_exists('STI_Admin')) :
         /**
          * Generate and display options page
          */
-        public function display_admin_page()
-        {
-
+        public function display_admin_page() {
             $nonce = wp_create_nonce('plugin-settings');
 
             $tabs = array(
-                'buttons' => esc_html__('Buttons', 'share-this-image'),
-                'display' => esc_html__('Display Rules', 'share-this-image'),
-                'content' => esc_html__('Content', 'share-this-image'),
-                'social' => esc_html__('Social Media', 'share-this-image'),
-                'general' => esc_html__('General', 'share-this-image'),
+                'buttons' => esc_html__('Buttons', 'wiki-image-social-share'),
+                'display' => esc_html__('Display Rules', 'wiki-image-social-share'),
+                'content' => esc_html__('Content', 'wiki-image-social-share'),
+                'social' => esc_html__('Social Media', 'wiki-image-social-share'),
+                'general' => esc_html__('General', 'wiki-image-social-share'),
             );
 
-            $current_tab = empty($_GET['tab']) ? 'buttons' : htmlspecialchars(urldecode($_GET['tab']));
+            $current_tab = isset($_GET['tab']) && array_key_exists($_GET['tab'], $tabs) 
+                ? sanitize_text_field($_GET['tab']) 
+                : 'buttons';
 
-            $tabs_html = '';
-
-            foreach ($tabs as $name => $label) {
-                $tabs_html .= '<li class="sti-nav-tab"><a data-tab="' . $name . '" href="' . admin_url('admin.php?page=sti-options&tab=' . $name) . '" class="sti-nav-tab-link ' . ($current_tab == $name ? 'active' : '') . '">' . $label . '</a></li>';
-            }
-
-            $tabs_html = '<ul class="sti-nav-tab-wrapper">' . $tabs_html . '</ul>';
-
-
-            if (isset($_POST["Submit"]) && current_user_can('manage_options') && isset($_POST["_wpnonce"]) && wp_verify_nonce($_POST["_wpnonce"], 'plugin-settings')) {
+            // Handle form submission
+            if (isset($_POST['Submit']) && current_user_can('manage_options') && 
+                isset($_POST['_wpnonce']) && wp_verify_nonce($_POST['_wpnonce'], 'plugin-settings')) {
                 STI_Admin_Options::update_settings();
+                add_settings_error(
+                    'wiss_settings',
+                    'settings_updated',
+                    __('Settings saved successfully.', 'wiki-image-social-share'),
+                    'updated'
+                );
             }
 
-            $sti_options = STI_Admin_Options::get_settings(); ?>
+            $sti_options = STI_Admin_Options::get_settings();
+            ?>
 
-
-            <div id="sti-admin-header">
-                <div class="inner">
-                    <div class="logo">
-                        <img src="<?php echo WISS_URL . '/assets/images/logo.png'; ?>" alt="<?php esc_attr_e('logo', 'wiki-image-social-share'); ?>">
-                        <span class="title">
-                            <?php esc_html_e('Wiki Image Social Share', 'wiki-image-social-share'); ?>
-                        </span>
-                        <span class="version">
-                            <?php echo 'v' . WISS_VER; ?>
-                        </span>
-                    </div>
-                    <div class="btns">
-                        <a class="button button-docs" href="https://github.com/wikiwyrhead/wiki-image-social-share/wiki" target="_blank"><?php esc_html_e('Documentation', 'wiki-image-social-share'); ?></a>
-                        <a class="button button-support" href="https://github.com/wikiwyrhead/wiki-image-social-share/issues" target="_blank"><?php esc_html_e('Support', 'wiki-image-social-share'); ?></a>
-                        <a class="button button-github" href="https://github.com/wikiwyrhead/wiki-image-social-share" target="_blank"><?php esc_html_e('GitHub Repository', 'wiki-image-social-share'); ?></a>
+            <div class="wrap wiss-admin-wrap">
+                <div id="sti-admin-header" class="wiss-header">
+                    <div class="wiss-header-inner">
+                        <div class="wiss-logo">
+                            <img src="<?php echo esc_url(WISS_URL . '/assets/images/logo.png'); ?>" alt="<?php esc_attr_e('Wiki Image Social Share', 'wiki-image-social-share'); ?>">
+                            <div class="wiss-title-wrap">
+                                <h1><?php esc_html_e('Wiki Image Social Share', 'wiki-image-social-share'); ?></h1>
+                                <span class="wiss-version"><?php echo 'v' . esc_html(WISS_VER); ?></span>
+                            </div>
+                        </div>
+                        <div class="wiss-header-actions">
+                            <a href="https://github.com/wikiwyrhead/wiki-image-social-share/wiki" target="_blank" class="button button-secondary">
+                                <span class="dashicons dashicons-book"></span> 
+                                <?php esc_html_e('Documentation', 'wiki-image-social-share'); ?>
+                            </a>
+                            <a href="https://github.com/wikiwyrhead/wiki-image-social-share/issues" target="_blank" class="button button-secondary">
+                                <span class="dashicons dashicons-sos"></span> 
+                                <?php esc_html_e('Support', 'wiki-image-social-share'); ?>
+                            </a>
+                            <a href="https://github.com/wikiwyrhead/wiki-image-social-share" target="_blank" class="button button-primary">
+                                <span class="dashicons dashicons-randomize"></span> 
+                                <?php esc_html_e('GitHub', 'wiki-image-social-share'); ?>
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+                <?php settings_errors('wiss_settings'); ?>
 
-            <div class="wrap">
+                <nav class="nav-tab-wrapper wiss-nav-tab-wrapper">
+                    <?php foreach ($tabs as $name => $label) : ?>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=sti-options&tab=' . $name)); ?>" 
+                           class="nav-tab <?php echo $current_tab === $name ? 'nav-tab-active' : ''; ?>">
+                            <?php echo esc_html($label); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </nav>
 
-                <h1 class="sti-title"><?php esc_html_e('Wiki Image Social Share Settings', 'wiki-image-social-share'); ?></h1>
-
-                <?php echo $tabs_html; ?>
-
-                <form action="" name="sti_form" id="sti_form" class="sti_form form-tab-<?php echo $current_tab; ?>" method="post">
-
-                    <div class="sti-settings">
-
-                        <div class="sti-settings-inner">
-
+                <div class="wiss-content-wrap">
+                    <form action="" method="post" name="sti_form" id="sti_form" class="wiss-settings-form">
+                        <div class="wiss-settings-content">
                             <?php
-                            foreach ($tabs as $name => $label) {
-                                new STI_Admin_Fields($name, $sti_options);
-                            }
+                            // Display the current tab's fields
+                            new STI_Admin_Fields($current_tab, $sti_options);
                             ?>
-
                         </div>
 
-                    </div>
-
-                    <input type="hidden" name="_wpnonce" value="<?php echo esc_attr($nonce); ?>">
-
-                    <p class="submit"><input name="Submit" type="submit" class="button-primary" value="<?php esc_attr_e('Save Changes', 'wiki-image-social-share'); ?>" /></p>
-
-                </form>
-
+                        <?php wp_nonce_field('plugin-settings', '_wpnonce', false); ?>
+                        
+                        <div class="wiss-settings-footer">
+                            <?php submit_button(__('Save Changes', 'wiki-image-social-share'), 'primary', 'Submit', false); ?>
+                        </div>
+                    </form>
+                </div>
             </div>
-
-<?php }
+            <?php
+        }
 
         /**
          * Enqueue admin scripts and styles

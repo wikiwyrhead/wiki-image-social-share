@@ -1,51 +1,272 @@
+/* =============================================
+   Main Admin Styles for Wiki Image Social Share
+   ============================================= */
+
+/* Base Container */
+.wrap.wiss-admin-wrap {
+    max-width: 1200px;
+    margin: 20px 20px 0 0;
+    padding: 0;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 3px;
+    position: relative;
+}
+
+/* Header Styles */
+.wiss-header {
+    background: #fff;
+    border-bottom: 1px solid #ccd0d4;
+    padding: 15px 20px;
+    margin: 0 0 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.wiss-header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.wiss-logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.wiss-logo img {
+    width: 40px;
+    height: 40px;
+    display: block;
+}
+
+.wiss-title-wrap h1 {
+    margin: 0;
+    padding: 0;
+    line-height: 1.3;
+    font-size: 1.8em;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.wiss-version {
+    background: #2271b1;
+    color: #fff;
+    font-size: 0.6em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    vertical-align: middle;
+    margin-left: 10px;
+}
+
+.wiss-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.wiss-header-actions .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wiss-header-actions .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Navigation Tabs */
+.wiss-nav-tab-wrapper {
+    margin: 0 20px;
+    border-bottom: 1px solid #ccd0d4;
+    padding-bottom: 0;
+}
+
+.wiss-nav-tab-wrapper .nav-tab {
+    margin-left: 0;
+    margin-right: 5px;
+    padding: 8px 15px;
+    font-size: 14px;
+    line-height: 1.71428571;
+    font-weight: 500;
+    border: 1px solid #ccd0d4;
+    border-bottom: none;
+    background: #f0f0f1;
+    color: #1d2327;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.wiss-nav-tab-wrapper .nav-tab-active {
+    background: #fff;
+    border-bottom: 1px solid #fff;
+    margin-bottom: -1px;
+    color: #1d2327;
+}
+
+/* Content Area */
+.wiss-content-wrap {
+    padding: 0 20px 20px;
+}
+
+.wiss-settings-form {
+    margin-top: 20px;
+}
+
+/* Form Elements */
+#sti_form {
+    margin: 0;
+}
+
+#sti_form textarea,
+#sti_form input[type="text"],
+#sti_form input[type="url"],
+#sti_form input[type="email"],
+#sti_form input[type="number"],
+#sti_form select {
+    width: 100%;
+    max-width: 600px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #8c8f94;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07) inset;
+    background-color: #fff;
+    color: #2c3338;
+}
+
 #sti_form textarea {
-  width: 35em;
+    min-height: 100px;
 }
 
-#sti_form tr.delimiter {
-  border-bottom: 1px solid #ccc;
-  height: 30px;
+/* Table Styles */
+#sti_form table {
+    width: 100%;
+    margin: 20px 0;
+    border-collapse: collapse;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    background: #fff;
 }
 
-#sti_form tbody tr.delimiter:first-child {
-  display: none;
+#sti_form th, 
+#sti_form td {
+    padding: 12px 15px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #dcdcde;
 }
 
-#sti_form .heading {
+#sti_form th {
+    font-weight: 600;
+    background: #f6f7f7;
+    color: #1d2327;
 }
 
+/* Section Headings */
 #sti_form .heading h2 {
-  font-size: 1.5em;
+    font-size: 1.5em;
+    margin: 1.5em 0 0.8em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #dcdcde;
+    color: #1d2327;
 }
-
-/*#sti_form tr + tr.heading {*/
-/*    border-top: 1px solid #ccc;*/
-/*}*/
 
 #sti_form tr.heading h3 {
-  margin: 0;
+    margin: 1.5em 0 1em;
+    font-size: 1.3em;
+    color: #1d2327;
 }
 
-#sti_form tr.heading h3,
-#sti_form tr.heading .description {
-  margin-top: 30px;
+/* Buttons */
+.wiss-settings-footer {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #dcdcde;
 }
 
-#sti_form tr.delimiter:first-child + tr.heading h3,
-#sti_form tr.delimiter:first-child + tr.heading .description {
-  margin-top: 0;
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .wiss-header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .wiss-header-actions {
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    .wiss-header-actions .button {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    #sti_form th, 
+    #sti_form td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    #sti_form tr {
+        margin-bottom: 20px;
+        display: block;
+        border-bottom: 2px solid #dcdcde;
+    }
+    
+    #sti_form textarea,
+    #sti_form input[type="text"],
+    #sti_form input[type="url"],
+    #sti_form input[type="email"],
+    #sti_form input[type="number"],
+    #sti_form select {
+        max-width: 100%;
+    }
 }
 
-#sti_form .clearfix:after {
-  visibility: hidden;
-  display: block;
-  font-size: 0;
-  content: " ";
-  clear: both;
-  height: 0;
+/* WordPress 5.5+ compatibility */
+.components-panel__body > .components-panel__body-title {
+    margin: 0 -16px 16px;
 }
-#sti_form .clearfix {
-  display: inline-block;
+
+/* Fix for color picker */
+.wp-picker-container .wp-color-result.button {
+    margin: 0 6px 6px 0;
+}
+
+/* Improve checkbox and radio inputs */
+#sti_form input[type="checkbox"],
+#sti_form input[type="radio"] {
+    margin: 0 5px 0 0;
+}
+
+/* Better spacing for form rows */
+.form-table tr:not(:first-child) {
+    border-top: 1px solid #f0f0f1;
+}
+
+/* Success and error messages */
+.wiss-notice {
+    padding: 10px 15px;
+    margin: 10px 0;
+    border-left: 4px solid #00a32a;
+    background: #edfaef;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.wiss-notice.wiss-notice-error {
+    border-left-color: #d63638;
+    background: #fcf0f1;
+}
+
+.wiss-notice.wiss-notice-warning {
+    border-left-color: #dba617;
+    background: #fcf9e8;
 }
 
 .sti-back {
