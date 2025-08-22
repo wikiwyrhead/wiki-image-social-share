@@ -3,7 +3,7 @@ Contributors: wikiwyrhead
 Tags: social sharing, whatsapp, facebook, twitter, linkedin, pinterest, instagram, telegram, discord, reddit, open graph, twitter cards, image sharing, social media, rich previews
 Requires at least: 5.0
 Tested up to: 6.8
-Stable tag: 1.2.1
+Stable tag: 1.0.0
 Requires PHP: 7.4
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html

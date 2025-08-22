@@ -3,7 +3,7 @@
 /*
 Plugin Name: Wiki Image Social Share
 Description: Enhanced social media sharing plugin for WordPress images with rich preview support across all major platforms including WhatsApp, Facebook, Twitter, LinkedIn, Pinterest, Instagram, Telegram, Discord, and Reddit.
-Version: 1.2.1
+Version: 1.2.0
 Author: Arnel Go
 Author URI: https://arnelbg.com/
 Plugin URI: https://github.com/wikiwyrhead/wiki-image-social-share
@@ -21,7 +21,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('WISS_VER', '1.2.1');
+define('WISS_VER', '1.2.0');
 
 // Define plugin constants
 define('WISS_DIR', dirname(__FILE__));
