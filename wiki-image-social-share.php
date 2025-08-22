@@ -3,7 +3,7 @@
 /*
 Plugin Name: Wiki Image Social Share
 Description: Enhanced social media sharing plugin for WordPress images with rich preview support across all major platforms including WhatsApp, Facebook, Twitter, LinkedIn, Pinterest, Instagram, Telegram, Discord, and Reddit.
-Version: 1.2.0
+Version: 1.2.1
 Author: Arnel Go
 Author URI: https://arnelbg.com/
 Plugin URI: https://github.com/wikiwyrhead/wiki-image-social-share
@@ -21,7 +21,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('WISS_VER', '1.0.0');
+define('WISS_VER', '1.2.1');
 
 // Define plugin constants
 define('WISS_DIR', dirname(__FILE__));
@@ -221,31 +221,103 @@ function WISS()
     return WISS_Main::instance();
 }
 
-/*
- * Activation hook
+/**
+ * Plugin activation handler
  */
 register_activation_hook(__FILE__, 'wiss_activation_check');
-function wiss_activation_check()
-{
-    // Ensure admin options class is loaded
-    if (!class_exists('STI_Admin_Options')) {
-        include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
-    }
-
+function wiss_activation_check() {
+    // Include required files
+    include_once WISS_DIR . '/includes/class-sti-helpers.php';
+    include_once WISS_DIR . '/includes/class-sti-functions.php';
+    
     // Create default settings if they don't exist
     if (!get_option('wiss_settings')) {
-        $default_settings = STI_Admin_Options::get_default_settings();
+        // If admin options class exists, use it, otherwise use minimal defaults
+        if (file_exists(WISS_DIR . '/includes/admin/class-sti-admin-options.php')) {
+            include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
+            if (class_exists('STI_Admin_Options')) {
+                $default_settings = STI_Admin_Options::get_default_settings();
+            }
+        }
+        
+        // Fallback default settings if admin class couldn't be loaded
+        if (empty($default_settings)) {
+            $default_settings = array(
+                'enable' => 'true',
+                'enable_mobile' => 'true',
+                'buttons' => array(
+                    'facebook' => array('desktop' => 'true', 'mobile' => 'true'),
+                    'twitter' => array('desktop' => 'true', 'mobile' => 'true'),
+                    'whatsapp' => array('desktop' => 'true', 'mobile' => 'true'),
+                    'pinterest' => array('desktop' => 'true', 'mobile' => 'true'),
+                    'linkedin' => array('desktop' => 'true', 'mobile' => 'true')
+                ),
+                'share_text' => 'Share this image',
+                'share_text_vis' => 'true',
+                'share_text_align' => 'center',
+                'share_style' => 'default',
+                'share_size' => 'medium',
+                'share_buttons' => 'both',
+                'share_buttons_align' => 'center',
+                'share_buttons_vis' => 'true',
+                'share_buttons_style' => 'default',
+                'share_buttons_size' => 'medium',
+                'share_buttons_icon' => 'default',
+                'share_buttons_label' => 'true',
+                'share_buttons_count' => 'false',
+                'share_buttons_total' => 'false',
+                'share_buttons_more' => 'false',
+                'share_buttons_more_style' => 'default',
+                'share_buttons_more_icon' => 'plus',
+                'share_buttons_more_label' => 'More',
+                'share_buttons_mobile' => 'true',
+                'share_buttons_mobile_style' => 'default',
+                'share_buttons_mobile_size' => 'medium',
+                'share_buttons_mobile_icon' => 'default',
+                'share_buttons_mobile_label' => 'true',
+                'share_buttons_mobile_count' => 'false',
+                'share_buttons_mobile_total' => 'false',
+                'share_buttons_mobile_more' => 'false',
+                'share_buttons_mobile_more_style' => 'default',
+                'share_buttons_mobile_more_icon' => 'plus',
+                'share_buttons_mobile_more_label' => 'More',
+                'share_buttons_mobile_position' => 'bottom',
+                'share_buttons_mobile_show_on_desktop' => 'false',
+                'share_buttons_mobile_show_on_mobile' => 'true',
+                'share_buttons_mobile_show_on_tablet' => 'true',
+                'share_buttons_mobile_show_on_desktop_breakpoint' => '1024',
+                'share_buttons_mobile_show_on_tablet_breakpoint' => '768',
+                'share_buttons_mobile_show_on_mobile_breakpoint' => '480',
+                'share_buttons_mobile_show_on_desktop_custom' => '',
+                'share_buttons_mobile_show_on_tablet_custom' => '',
+                'share_buttons_mobile_show_on_mobile_custom' => '',
+                'share_buttons_mobile_show_on_desktop_custom_media' => '',
+                'share_buttons_mobile_show_on_tablet_custom_media' => '',
+                'share_buttons_mobile_show_on_mobile_custom_media' => '',
+                'share_buttons_mobile_show_on_desktop_custom_selector' => '',
+                'share_buttons_mobile_show_on_tablet_custom_selector' => '',
+                'share_buttons_mobile_show_on_mobile_custom_selector' => '',
+                'share_buttons_mobile_show_on_desktop_custom_selector_media' => '',
+                'share_buttons_mobile_show_on_tablet_custom_selector_media' => '',
+                'share_buttons_mobile_show_on_mobile_custom_selector_media' => ''
+            );
+        }
+        
         update_option('wiss_settings', $default_settings, false);
     }
 
     // Set default options on activation
-    $hide_notice = get_option('wiss_hide_welcome_notice');
-    if (! $hide_notice) {
+    if (false === get_option('wiss_hide_welcome_notice', false)) {
         update_option('wiss_hide_welcome_notice', 'false', false);
     }
 
     // Set plugin version
     update_option('wiss_plugin_ver', WISS_VER, false);
+    
+    // Clear any cached data
+    if (function_exists('wp_cache_flush')) {
+        wp_cache_flush();
+    }
 }
 
 // Initialize the plugin

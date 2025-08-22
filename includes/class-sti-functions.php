@@ -191,7 +191,8 @@ if (! class_exists('STI_Functions')) :
                 'url_structure' => get_option('permalink_structure'),
                 'minWidth'     => $settings['minWidth'],
                 'minHeight'    => $settings['minHeight'],
-                'sharer'       => ($settings['sharer'] == 'true') ? WISS_URL . '/sharer.php' : '',
+                // Always use sharer.php to ensure consistent OG/Twitter tags
+                'sharer'       => WISS_URL . '/sharer.php',
                 'position'     => $settings['position'],
                 'analytics'    => ($settings['use_analytics'] == 'true') ? true : false,
                 'buttons'      => $this->get_buttons(),
@@ -210,7 +211,14 @@ if (! class_exists('STI_Functions')) :
              */
             $sti_vars = apply_filters('sti_js_plugin_data', $sti_vars);
 
-            $suffix = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? '' : '.min';
+            // Security nonces for frontend AJAX
+            $sti_vars['shortlink_nonce']   = wp_create_nonce('wiss_shortlink');
+            $sti_vars['store_meta_nonce']  = wp_create_nonce('wiss_store_meta');
+
+            // Always use non-minified JS to ensure latest logic is loaded
+            $use_min = false;
+
+            $suffix = $use_min ? '.min' : '';
 
             wp_enqueue_style('wiss-style', WISS_URL . '/assets/css/sti' . $suffix . '.css', array(), WISS_VER);
             wp_enqueue_script('wiss-script', WISS_URL . '/assets/js/sti' . $suffix . '.js', array('jquery'), WISS_VER, true);
@@ -225,20 +233,52 @@ if (! class_exists('STI_Functions')) :
 
             if ($this->is_sharing()) {
 
-                $http_ext = isset($_GET['ssl']) ? 'https://' : 'http://';
+                // Robust HTTPS detection (accept ssl=1,true,yes,on; honor is_ssl(); fall back to URL scheme)
+                $ssl_param = strtolower((string)($_GET['ssl'] ?? ''));
+                $use_https = (function_exists('is_ssl') && is_ssl()) || in_array($ssl_param, ['1', 'true', 'yes', 'on'], true);
+                $probe_url = isset($_GET['url']) ? filter_var($_GET['url'], FILTER_SANITIZE_URL) : '';
+                if (!$use_https && $probe_url && filter_var($probe_url, FILTER_VALIDATE_URL)) {
+                    $scheme = parse_url($probe_url, PHP_URL_SCHEME);
+                    if (strtolower((string)$scheme) === 'https') {
+                        $use_https = true;
+                    }
+                }
+                $http_ext = $use_https ? 'https://' : 'http://';
 
-                $page_link = esc_url($http_ext . $_SERVER["SERVER_NAME"] . $_SERVER["REQUEST_URI"]);
+                // Build canonical/page URL
+                $host = sanitize_text_field($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '');
+                $req_uri = esc_url($_SERVER['REQUEST_URI'] ?? '/');
+                $page_link = esc_url($http_ext . $host . $req_uri);
 
-                $title = isset($_GET['title']) ? htmlspecialchars(urldecode($_GET['title'])) : '';
-                $desc = isset($_GET['desc']) ? htmlspecialchars(urldecode($_GET['desc'])) : '';
-                $image = $http_ext . htmlspecialchars($_GET['img']);
-                $network = isset($_GET['network']) ? htmlspecialchars($_GET['network']) : '';
-                $url = isset($_GET['url']) ? htmlspecialchars($_GET['url']) : '';
-                if ($url && strpos($url, $_SERVER['HTTP_HOST']) === false) {
+                // Sanitize title/desc
+                $title = isset($_GET['title']) ? sanitize_text_field(urldecode($_GET['title'])) : '';
+                $desc = isset($_GET['desc']) ? sanitize_textarea_field(urldecode($_GET['desc'])) : '';
+
+                // Normalize image URL (full URL, protocol-relative, absolute path, or host/path)
+                $image = '';
+                if (isset($_GET['img'])) {
+                    $raw_img = trim(urldecode($_GET['img']));
+                    if (preg_match('#^https?://#i', $raw_img)) {
+                        $candidate = $raw_img;
+                    } elseif (strpos($raw_img, '//') === 0) {
+                        $candidate = $http_ext . ltrim($raw_img, '/');
+                    } elseif (strpos($raw_img, '/') === 0) {
+                        $candidate = $http_ext . $host . $raw_img;
+                    } else {
+                        $candidate = $http_ext . $raw_img;
+                    }
+                    if (filter_var($candidate, FILTER_VALIDATE_URL)) {
+                        $image = esc_url($candidate);
+                    }
+                }
+
+                $network = isset($_GET['network']) ? sanitize_key($_GET['network']) : '';
+                $url = isset($_GET['url']) ? filter_var($_GET['url'], FILTER_SANITIZE_URL) : '';
+                if ($url && (!filter_var($url, FILTER_VALIDATE_URL) || strpos($url, $host) === false)) {
                     $url = '';
                 }
 
-                $image_sizes = @getimagesize($image);
+                $image_sizes = $image ? @getimagesize($image) : false;
 
                 echo '<!-- Share This Image plugin meta tags -->';
 
@@ -253,11 +293,15 @@ if (! class_exists('STI_Functions')) :
 
                 // Enhanced Open Graph image tags for WhatsApp and other platforms
                 $whatsapp_optimizer = WISS_WhatsApp_Optimizer::instance();
-                $optimized_image = $whatsapp_optimizer->optimize_image($image);
+                $optimized_image = $image ? $whatsapp_optimizer->optimize_image($image) : '';
 
-                echo '<meta property="og:image" itemprop="image" content="' . $optimized_image . '" />';
-                if (strpos($optimized_image, 'https://') === 0) {
-                    echo '<meta property="og:image:secure_url" content="' . $optimized_image . '" />';
+                if ($optimized_image) {
+                    $sep = (strpos($optimized_image, '?') !== false) ? '&' : '?';
+                    $optimized_with_cache = $optimized_image . $sep . 'fb_cache=' . time();
+                    echo '<meta property="og:image" itemprop="image" content="' . $optimized_with_cache . '" />';
+                    if (strpos($optimized_image, 'https://') === 0) {
+                        echo '<meta property="og:image:secure_url" content="' . $optimized_with_cache . '" />';
+                    }
                 }
 
                 // WhatsApp-specific meta tags
@@ -267,9 +311,11 @@ if (! class_exists('STI_Functions')) :
                     'image' => $optimized_image
                 ]);
 
-                if ($network == 'twitter') {
-                    echo '<meta property="twitter:image" content="' . $image . '" />';
-                    echo '<meta property="twitter:image:src" content="' . $image . '" />';
+                if ($image && $network == 'twitter') {
+                    $sep_tw = (strpos($image, '?') !== false) ? '&' : '?';
+                    $image_tw = $image . $sep_tw . 'tw_cache=' . time();
+                    echo '<meta property="twitter:image" content="' . $image_tw . '" />';
+                    echo '<meta property="twitter:image:src" content="' . $image_tw . '" />';
                 }
 
                 if ($image_sizes) {
@@ -498,54 +544,92 @@ if (! class_exists('STI_Functions')) :
                 exit;
             }
 
-            // Set CORS headers for all requests
-            header('Access-Control-Allow-Origin: *');
-            header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
-
-            // Verify nonce for security
-            if (!wp_verify_nonce($_POST['nonce'] ?? '', 'wiss_download_image')) {
-                wp_die('Security check failed', 'Unauthorized', array('response' => 403));
+            // Handle CORS preflight requests
+            if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+                header('Access-Control-Allow-Origin: *');
+                header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+                header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-WP-Nonce');
+                header('Access-Control-Max-Age: 86400');
+                header('Content-Length: 0');
+                header('Content-Type: text/plain');
+                exit(0);
             }
 
-            $image_url = sanitize_url($_POST['image_url'] ?? '');
-            $file_name = sanitize_file_name($_POST['file_name'] ?? 'image');
+            // Set CORS headers for all responses
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With, X-WP-Nonce');
+            header('Access-Control-Expose-Headers: Content-Disposition');
+            header('Access-Control-Allow-Credentials: true');
+
+            // Verify nonce for security
+            $nonce = $_POST['nonce'] ?? '';
+            if (!wp_verify_nonce($nonce, 'wiss_download_image')) {
+                wp_send_json_error('Security check failed', 403);
+            }
+
+            // Get and validate parameters
+            $image_url = filter_input(INPUT_POST, 'image_url', FILTER_SANITIZE_URL);
+            $raw_name = isset($_POST['file_name']) ? wp_unslash($_POST['file_name']) : 'image';
+            $file_name = sanitize_file_name($raw_name);
 
             // Validate image URL
             if (empty($image_url) || !filter_var($image_url, FILTER_VALIDATE_URL)) {
-                wp_die('Invalid image URL', 'Bad Request', array('response' => 400));
+                wp_send_json_error('Invalid image URL', 400);
             }
 
             // Security: Only allow images from same domain or trusted sources
-            $parsed_url = parse_url($image_url);
-            $current_host = $_SERVER['HTTP_HOST'];
+            $parsed_url = wp_parse_url($image_url);
+            $current_host = wp_parse_url(home_url(), PHP_URL_HOST);
+            $is_local = false;
 
-            if ($parsed_url['host'] !== $current_host) {
+            // Check if URL is from the current site
+            if (isset($parsed_url['host']) && $parsed_url['host'] === $current_host) {
+                $is_local = true;
+            } else {
                 // Check if it's a WordPress upload URL
                 $upload_dir = wp_upload_dir();
-                $upload_url = parse_url($upload_dir['baseurl']);
-
-                if ($parsed_url['host'] !== $upload_url['host']) {
-                    wp_die('Image source not allowed', 'Forbidden', array('response' => 403));
+                $upload_url = wp_parse_url($upload_dir['baseurl']);
+                
+                if (isset($upload_url['host']) && $upload_url['host'] === $parsed_url['host']) {
+                    $is_local = true;
+                } else {
+                    // Allow external URLs if they're explicitly whitelisted
+                    $allowed_domains = apply_filters('wiss_allowed_download_domains', array());
+                    if (!in_array($parsed_url['host'], $allowed_domains)) {
+                        wp_send_json_error('Image source not allowed', 403);
+                    }
                 }
             }
 
-            // Download image with proper error handling
+            // If it's a local file, serve it directly for better performance
+            if ($is_local) {
+                $local_path = $this->get_local_path_from_url($image_url);
+                if ($local_path && file_exists($local_path)) {
+                    $this->serve_local_file($local_path, $file_name);
+                    exit;
+                }
+            }
+
+            // For remote files, download and serve
             $response = wp_safe_remote_get($image_url, array(
                 'timeout' => 30,
+                'redirection' => 5,
+                'sslverify' => false,
                 'headers' => array(
                     'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
-                    'Accept' => 'image/*'
+                    'Accept' => 'image/*,application/octet-stream',
+                    'Referer' => home_url()
                 )
             ));
 
             if (is_wp_error($response)) {
-                wp_die('Failed to download image: ' . $response->get_error_message(), 'Download Error', array('response' => 500));
+                wp_send_json_error('Failed to download image: ' . $response->get_error_message(), 500);
             }
 
             $response_code = wp_remote_retrieve_response_code($response);
             if ($response_code !== 200) {
-                wp_die('Image not found or not accessible', 'Not Found', array('response' => $response_code));
+                wp_send_json_error('Image not found or not accessible', $response_code);
             }
 
             $image_data = wp_remote_retrieve_body($response);
@@ -553,7 +637,7 @@ if (! class_exists('STI_Functions')) :
 
             // Validate image content
             if (empty($image_data)) {
-                wp_die('Empty image data received', 'Invalid Content', array('response' => 400));
+                wp_send_json_error('Empty image data received', 400);
             }
 
             // Ensure proper file extension
@@ -562,22 +646,20 @@ if (! class_exists('STI_Functions')) :
                 $file_name .= $extension;
             }
 
+            // Clean up the filename
+            $file_name = sanitize_file_name($file_name);
+            
             // Set proper headers for download
             header('Content-Type: ' . $content_type);
-            header('Content-Disposition: attachment; filename="' . $file_name . '"');
+            header('Content-Disposition: attachment; filename="' . $file_name . '"; filename*="' . $file_name . '"');
             header('Content-Length: ' . strlen($image_data));
             header('Cache-Control: no-cache, must-revalidate');
             header('Expires: 0');
-
-            // Enhanced CORS headers for production compatibility
-            header('Access-Control-Allow-Origin: *');
-            header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
-            header('Access-Control-Max-Age: 86400'); // Cache preflight for 24 hours
-
+            header('Pragma: public');
+            
             // Output image data
             echo $image_data;
-            wp_die(); // Properly terminate AJAX request
+            exit;
         }
 
         /*
@@ -680,8 +762,63 @@ if (! class_exists('STI_Functions')) :
                 wp_send_json_error(array('message' => 'Failed to store metadata'));
             }
         }
-    }
 
+        /**
+         * Convert URL to local file path
+         */
+        private function get_local_path_from_url($url) {
+            $upload_dir = wp_upload_dir();
+            $upload_base = trailingslashit($upload_dir['basedir']);
+            $upload_url = trailingslashit($upload_dir['baseurl']);
+            
+            // Handle both http and https
+            $home_url = home_url('/');
+            $home_url_https = str_replace('http://', 'https://', $home_url);
+            $home_url_http = str_replace('https://', 'http://', $home_url);
+            
+            // Try to get the local path
+            if (strpos($url, $upload_url) === 0) {
+                return str_replace($upload_url, $upload_base, $url);
+            } elseif (strpos($url, $home_url) === 0) {
+                return str_replace($home_url, ABSPATH, $url);
+            } elseif (strpos($url, $home_url_https) === 0) {
+                return str_replace($home_url_https, ABSPATH, $url);
+            } elseif (strpos($url, $home_url_http) === 0) {
+                return str_replace($home_url_http, ABSPATH, $url);
+            }
+            
+            return false;
+        }
+        
+        /**
+         * Serve a local file with proper headers
+         */
+        private function serve_local_file($file_path, $download_name) {
+            if (!file_exists($file_path)) {
+                wp_send_json_error('File not found', 404);
+            }
+            
+            $mime_type = wp_check_filetype($file_path)['type'] ?: 'application/octet-stream';
+            $file_size = filesize($file_path);
+            
+            // Clean the output buffer
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            
+            // Set headers
+            header('Content-Type: ' . $mime_type);
+            header('Content-Disposition: attachment; filename="' . $download_name . '"; filename*="' . $download_name . '"');
+            header('Content-Length: ' . $file_size);
+            header('Cache-Control: no-cache, must-revalidate');
+            header('Expires: 0');
+            header('Pragma: public');
+            
+            // Use readfile() for better memory management
+            readfile($file_path);
+            exit;
+        }
+    }
 
 endif;
 

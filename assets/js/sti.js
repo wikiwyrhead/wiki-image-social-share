@@ -60,6 +60,10 @@ StiHooks.filters = StiHooks.filters || {};
         twitterVia: sti_vars.twitterVia,
         appId: sti_vars.appId,
         zIndex: sti_vars.zIndex,
+        // Security nonces
+        store_meta_nonce: sti_vars.store_meta_nonce,
+        download_nonce: sti_vars.download_nonce,
+        shortlink_nonce: sti_vars.shortlink_nonce,
         align: { x: "left", y: "top" },
         offset: { x: 0, y: 0 },
         custom_data: sti_vars.custom_data,
@@ -466,58 +470,33 @@ StiHooks.filters = StiHooks.filters || {};
           .replace(/\&img.*$/, "")
           .replace(/#.*$/, "")
           .replace(/[\?|&]scroll.*$/, "");
-        data.schar = data.local.indexOf("?") != -1 ? "&" : "?";
         data.ssl = data.media.indexOf("https://") >= 0 ? "&ssl=true" : "";
 
-        // Create unique URL for each image instead of using current page URL
-        var imageHash = methods.createHash(data.media, 8);
-        var uniqueImageUrl =
-          data.local + data.schar + "wiss_image=" + imageHash;
+        // Use current page as landing URL unless an explicit one is provided
+        data.link = e.data("url") ? e.data("url") : data.local;
 
-        // Store image metadata for social media crawlers
-        methods.storeImageMetadata(
-          imageHash,
-          data.media,
-          data.title,
-          data.summary,
-          data.local,
-          network
-        );
-
-        data.link = e.data("url") ? e.data("url") : uniqueImageUrl;
-        data.locUrl = e.data("url")
-          ? "&url=" + encodeURIComponent(e.data("url"))
-          : "";
-
-        // Always use sharer.php for proper meta tag generation and lightbox display
+        // Always use sharer.php: single canonical share URL for all networks
         data.page = opts.sharer
           ? opts.sharer +
-            "?url=" +
-            encodeURIComponent(data.link) +
-            "&img=" +
-            encodeURIComponent(data.media.replace(/^(http?|https):\/\//, "")) +
-            "&title=" +
-            encodeURIComponent(methods.replaceChars(data.title)) +
-            "&desc=" +
-            encodeURIComponent(methods.replaceChars(data.summary)) +
-            "&network=" +
-            network +
-            data.ssl +
-            data.hash +
-            "&image_id=" +
-            imageHash
-          : uniqueImageUrl +
-            "&img=" +
-            encodeURIComponent(data.media.replace(/^(http?|https):\/\//, "")) +
-            "&title=" +
-            encodeURIComponent(methods.replaceChars(data.title)) +
-            "&desc=" +
-            encodeURIComponent(methods.replaceChars(data.summary)) +
-            "&network=" +
-            network +
-            data.locUrl +
-            data.ssl +
-            data.hash;
+            "?img=" + encodeURIComponent(data.media) +
+            "&title=" + encodeURIComponent(methods.replaceChars(data.title)) +
+            "&desc=" + encodeURIComponent(methods.replaceChars(data.summary)) +
+            "&url=" + encodeURIComponent(data.link) +
+            "&network=" + network +
+            data.ssl
+          : data.local +
+            (data.local.indexOf("?") !== -1 ? "&" : "?") +
+            "img=" + encodeURIComponent(data.media) +
+            "&title=" + encodeURIComponent(methods.replaceChars(data.title)) +
+            "&desc=" + encodeURIComponent(methods.replaceChars(data.summary)) +
+            "&network=" + network +
+            data.ssl;
+
+        // For WhatsApp only: append a cache-buster to force a fresh scrape
+        if (network === "whatsapp") {
+          var waCb = "wa_cb=" + (Date.now ? Date.now() : new Date().getTime());
+          data.page += (data.page.indexOf("?") !== -1 ? "&" : "?") + waCb;
+        }
 
         // links shortener
         data = methods.setShortLinks(data);
@@ -719,12 +698,29 @@ StiHooks.filters = StiHooks.filters || {};
 
         // Clean filename for download
         fileName = fileName.replace(/[^a-z0-9\-_.]/gi, "_");
+        
+        // Ensure file has an extension
+        if (!fileName.includes('.')) {
+          var url = new URL(imageUrl);
+          var pathParts = url.pathname.split('.');
+          if (pathParts.length > 1) {
+            var ext = pathParts.pop().toLowerCase();
+            // Only allow safe extensions
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+              fileName += '.' + ext;
+            } else {
+              fileName += '.jpg'; // Default to jpg if extension is not in allowed list
+            }
+          } else {
+            fileName += '.jpg'; // Default to jpg if no extension found
+          }
+        }
 
-        // Try multiple download methods in order of preference (removed newTab to prevent blank tabs)
+        // Use the most reliable method first (server proxy)
         methods.tryDownloadMethods(imageUrl, fileName, [
-          "directLink",
-          "fetchBlob",
           "serverProxy",
+          "fetchBlob",
+          "directLink"
         ]);
 
         // Trigger analytics event for download
@@ -739,7 +735,6 @@ StiHooks.filters = StiHooks.filters || {};
 
         if (!currentMethod) {
           console.error("All download methods failed for image:", imageUrl);
-          // Show user-friendly error message instead of opening blank tab
           alert(
             "Download failed. Please try right-clicking the image and selecting 'Save image as...'"
           );
@@ -748,127 +743,130 @@ StiHooks.filters = StiHooks.filters || {};
 
         switch (currentMethod) {
           case "serverProxy":
-            methods.downloadViaServerProxy(
-              imageUrl,
-              fileName,
-              function (success) {
-                if (!success && methods_array.length > 0) {
-                  methods.tryDownloadMethods(imageUrl, fileName, methods_array);
-                }
+            methods.downloadViaServerProxy(imageUrl, fileName, function (success) {
+              if (!success && methods_array.length > 0) {
+                methods.tryDownloadMethods(imageUrl, fileName, methods_array);
               }
-            );
+            });
             break;
 
           case "fetchBlob":
-            methods.downloadViaFetchBlob(
-              imageUrl,
-              fileName,
-              function (success) {
-                if (!success && methods_array.length > 0) {
-                  methods.tryDownloadMethods(imageUrl, fileName, methods_array);
-                }
+            methods.downloadViaFetchBlob(imageUrl, fileName, function (success) {
+              if (!success && methods_array.length > 0) {
+                methods.tryDownloadMethods(imageUrl, fileName, methods_array);
               }
-            );
+            });
             break;
 
           case "directLink":
-            methods.downloadViaDirectLink(
-              imageUrl,
-              fileName,
-              function (success) {
-                if (!success && methods_array.length > 0) {
-                  methods.tryDownloadMethods(imageUrl, fileName, methods_array);
-                } else if (!success) {
-                  console.error("Direct link download failed for:", imageUrl);
-                }
+            methods.downloadViaDirectLink(imageUrl, fileName, function (success) {
+              if (!success && methods_array.length > 0) {
+                methods.tryDownloadMethods(imageUrl, fileName, methods_array);
+              } else if (!success) {
+                console.error("Direct link download failed for:", imageUrl);
               }
-            );
+            });
             break;
-
-          // Removed newTab case to prevent blank tabs opening
         }
       },
 
       downloadViaServerProxy: function (imageUrl, fileName, callback) {
-        // Use WordPress AJAX to proxy the download
-        $.ajax({
-          url: opts.ajaxurl,
-          type: "POST",
-          data: {
-            action: "wiss_download_image",
-            image_url: imageUrl,
-            file_name: fileName,
-            nonce: opts.download_nonce || "",
-          },
-          xhrFields: {
-            responseType: "blob",
-          },
-          success: function (data, status, xhr) {
-            // Create blob URL and trigger download
-            var blob = new Blob([data]);
-            var url = window.URL.createObjectURL(blob);
-            var link = document.createElement("a");
-            link.href = url;
-            link.download = fileName;
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            callback(true);
-          },
-          error: function (xhr, status, error) {
-            console.warn("Server proxy download failed:", {
-              status: status,
-              error: error,
-              responseText: xhr.responseText,
+        try {
+          var form = new URLSearchParams();
+          form.append("action", "wiss_download_image");
+          form.append("image_url", imageUrl);
+          form.append("file_name", fileName);
+          form.append("nonce", opts.download_nonce || "");
+
+          fetch(opts.ajaxurl, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              Accept: "*/*",
+            },
+            body: form.toString(),
+          })
+            .then(function (response) {
+              var contentType = response.headers.get("content-type") || "";
+              if (!response.ok) {
+                if (contentType.indexOf("application/json") !== -1) {
+                  return response.json().then(function (j) {
+                    throw new Error(j && (j.data || j.message) || "Download failed");
+                  });
+                }
+                throw new Error("HTTP " + response.status);
+              }
+              if (contentType.indexOf("application/json") !== -1) {
+                return response.json().then(function (j) {
+                  throw new Error(j && (j.data || j.message) || "Unexpected JSON");
+                });
+              }
+              return response.blob();
+            })
+            .then(function (blob) {
+              var url = window.URL.createObjectURL(blob);
+              var link = document.createElement("a");
+              link.href = url;
+              link.download = fileName;
+              link.style.display = "none";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+              callback(true);
+            })
+            .catch(function (error) {
+              console.warn("Server proxy download failed:", error);
+              callback(false);
             });
-            callback(false);
-          },
-        });
+        } catch (e) {
+          console.warn("Server proxy download threw:", e);
+          callback(false);
+        }
       },
 
       downloadViaFetchBlob: function (imageUrl, fileName, callback) {
-        // Enhanced fetch with better error handling
-        fetch(imageUrl, {
-          mode: "cors",
-          credentials: "omit",
-          headers: {
-            Accept: "image/*",
-          },
-        })
-          .then(function (response) {
-            if (!response.ok) {
-              throw new Error("Network response was not ok");
-            }
-            return response.blob();
+        try {
+          fetch(imageUrl, {
+            method: "GET",
+            mode: "cors",
+            credentials: "omit",
+            headers: { Accept: "image/*" },
           })
-          .then(function (blob) {
-            var url = window.URL.createObjectURL(blob);
-            var link = document.createElement("a");
-            link.href = url;
-            link.download = fileName;
-            link.style.display = "none";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            callback(true);
-          })
-          .catch(function (error) {
-            console.warn("Fetch download failed:", error);
-            callback(false);
-          });
+            .then(function (response) {
+              if (!response.ok) {
+                throw new Error("Network response was not ok");
+              }
+              return response.blob();
+            })
+            .then(function (blob) {
+              var url = window.URL.createObjectURL(blob);
+              var link = document.createElement("a");
+              link.href = url;
+              link.download = fileName;
+              link.style.display = "none";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              window.URL.revokeObjectURL(url);
+              callback(true);
+            })
+            .catch(function (error) {
+              console.warn("Fetch download failed:", error);
+              callback(false);
+            });
+        } catch (e) {
+          console.warn("Fetch download threw:", e);
+          callback(false);
+        }
       },
 
       downloadViaDirectLink: function (imageUrl, fileName, callback) {
-        // Direct link download attempt
         var link = document.createElement("a");
         link.href = imageUrl;
         link.download = fileName;
         link.style.display = "none";
-
-        // Test if download attribute is supported
         if (typeof link.download !== "undefined") {
           document.body.appendChild(link);
           link.click();
@@ -1002,13 +1000,7 @@ StiHooks.filters = StiHooks.filters || {};
       },
 
       setShortLinks: function (data) {
-        var allowedNetworks = new Array(
-          "twitter",
-          "messenger",
-          "whatsapp",
-          "viber",
-          "telegram"
-        );
+        var allowedNetworks = new Array("whatsapp");
 
         if (
           (opts.short_url === "sti" || opts.short_url === "true") &&
@@ -1017,9 +1009,8 @@ StiHooks.filters = StiHooks.filters || {};
           var hash = methods.createHash(data.page, 7);
           if (hash) {
             methods.ajaxSaveShortLink(hash, data.page, true);
-            data.page = opts.url_structure
-              ? opts.homeurl + "sti/" + hash
-              : opts.homeurl + "?sti=" + hash;
+            // Always use query parameter shortlink to avoid server rewrite dependency
+            data.page = opts.homeurl + "?sti=" + hash;
           }
         }
 
@@ -1036,6 +1027,7 @@ StiHooks.filters = StiHooks.filters || {};
             action: "sti_shortLinks",
             hash: hash,
             link: link,
+            nonce: opts.shortlink_nonce || "",
           },
           success: function (response) {},
           error: function (jqXHR, textStatus, errorThrown) {},

@@ -55,25 +55,22 @@ if (! class_exists('STI_Shortlink')) :
 
             global $wpdb;
 
-            // Ensure admin options class is loaded
-            if (!class_exists('STI_Admin_Options')) {
-                if (is_admin()) {
-                    include_once WISS_DIR . '/includes/admin/class-sti-admin-options.php';
-                } else {
-                    // For frontend, use default settings if admin class not available
-                    $this->method = 'none';
-                    $this->links_table_name = $wpdb->prefix . 'sti_links';
-                    return;
-                }
-            }
+            // Always set table name
+            $this->links_table_name = $wpdb->prefix . 'sti_links';
 
-            $settings = STI_Admin_Options::get_settings();
+            // Load settings from admin class if available, otherwise fallback to stored options
+            $settings = array();
+            if (class_exists('STI_Admin_Options')) {
+                $settings = STI_Admin_Options::get_settings();
+            } else {
+                $settings = get_option('wiss_settings', array());
+            }
 
             if ($settings && isset($settings['short_url'])) {
                 $this->method = $settings['short_url'];
+            } else {
+                $this->method = 'no';
             }
-
-            $this->links_table_name = $wpdb->prefix . 'sti_links';
 
             // Add link to database
             add_action('wp_ajax_sti_shortLinks', array($this, 'ajax_add_link'));
@@ -88,13 +85,23 @@ if (! class_exists('STI_Shortlink')) :
          */
         public function ajax_add_link()
         {
-
             if (! defined('DOING_AJAX')) {
                 define('DOING_AJAX', true);
             }
 
-            $hash = sanitize_key($_POST['hash']);
-            $link = $_POST['link'];
+            // Verify nonce for security (public endpoint)
+            $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+            if (! wp_verify_nonce($nonce, 'wiss_shortlink')) {
+                wp_send_json_error(array('message' => 'Invalid nonce'), 403);
+            }
+
+            $hash = isset($_POST['hash']) ? sanitize_key($_POST['hash']) : '';
+            $link_raw = isset($_POST['link']) ? $_POST['link'] : '';
+            $link = esc_url_raw($link_raw);
+
+            if (empty($hash) || empty($link)) {
+                wp_send_json_error(array('message' => 'Invalid data'), 400);
+            }
 
             $this->insert_into_links_table($hash, $link);
 
@@ -154,20 +161,18 @@ if (! class_exists('STI_Shortlink')) :
                 $this->create_table();
             }
 
-            $values = $wpdb->prepare(
-                "(%s, %s)",
-                sanitize_key($link_hash),
-                $link_original
+            $data = array(
+                'hash' => sanitize_key($link_hash),
+                'link' => $link_original,
             );
 
-            $query  = "INSERT IGNORE INTO {$this->links_table_name}
-				       (`hash`, `link`)
-                       VALUES $values
-            ";
+            $result = $wpdb->insert(
+                $this->links_table_name,
+                $data,
+                array('%s', '%s')
+            );
 
-            $wpdb->query($query);
-
-            if ($wpdb->last_error) {
+            if ($result === false && $wpdb->last_error) {
                 error_log('STI: Failed to insert inside links table.');
             }
         }

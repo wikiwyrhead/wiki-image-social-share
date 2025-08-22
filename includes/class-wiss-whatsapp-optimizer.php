@@ -176,16 +176,52 @@ if (!class_exists('WISS_WhatsApp_Optimizer')) :
                 return $image_url;
             }
 
-            $validation = $this->validate_image($image_url);
-
-            // If image is already valid, add cache-busting parameter
-            if ($validation['valid']) {
-                return $this->add_cache_buster($image_url);
+            // Parse URL to handle relative URLs
+            $parsed_url = parse_url($image_url);
+            if (empty($parsed_url['host'])) {
+                $image_url = home_url($image_url);
             }
 
-            // For now, return original with cache buster
-            // In future versions, implement server-side optimization
-            return $this->add_cache_buster($image_url);
+            // Add cache buster with timestamp
+            $cache_buster = $this->add_cache_buster($image_url);
+
+            // If this is a local file, check if we need to resize it
+            $upload_dir = wp_upload_dir();
+            $local_path = str_replace(home_url('/'), ABSPATH, $image_url);
+
+            if (file_exists($local_path)) {
+                // Check if we need to resize the image
+                $image_editor = wp_get_image_editor($local_path);
+                if (!is_wp_error($image_editor)) {
+                    $size = $image_editor->get_size();
+
+                    // Check if image meets WhatsApp's recommended size (1200x630)
+                    if ($size['width'] < 1200 || $size['height'] < 630) {
+                        // Resize to meet minimum requirements
+                        $image_editor->resize(1200, 630, true);
+
+                        // Save to a temporary file
+                        $filename = 'wiss-optimized-' . md5($image_url) . '.jpg';
+                        $filepath = $upload_dir['basedir'] . '/wiss-optimized/' . $filename;
+
+                        // Ensure directory exists
+                        if (!file_exists(dirname($filepath))) {
+                            wp_mkdir_p(dirname($filepath));
+                        }
+
+                        // Save the optimized image
+                        $result = $image_editor->save($filepath, 'image/jpeg');
+
+                        if (!is_wp_error($result)) {
+                            // Return URL to the optimized image
+                            return $upload_dir['baseurl'] . '/wiss-optimized/' . $filename . '?wiss_wa=' . time();
+                        }
+                    }
+                }
+            }
+
+            // Return original URL with cache buster if optimization isn't possible
+            return $cache_buster;
         }
 
         /**
@@ -199,21 +235,40 @@ if (!class_exists('WISS_WhatsApp_Optimizer')) :
 
             $meta_tags = '';
 
-            // Essential WhatsApp meta tags
+            // Standard meta tags for WhatsApp
+            $meta_tags .= '<meta property="og:type" content="website" />' . "\n";
             $meta_tags .= '<meta property="og:image:type" content="image/jpeg" />' . "\n";
+            $meta_tags .= '<meta property="og:image:width" content="1200" />' . "\n";
+            $meta_tags .= '<meta property="og:image:height" content="630" />' . "\n";
+            $meta_tags .= '<meta property="og:image:alt" content="' . esc_attr($data['title'] ?? 'Shared Image') . '" />' . "\n";
             $meta_tags .= '<meta property="og:locale" content="en_US" />' . "\n";
+            $meta_tags .= '<meta property="og:site_name" content="' . esc_attr(get_bloginfo('name')) . '" />' . "\n";
+            $meta_tags .= '<meta name="twitter:card" content="summary_large_image" />' . "\n";
             $meta_tags .= '<meta name="robots" content="index,follow" />' . "\n";
 
             // Facebook app ID (WhatsApp uses Facebook's infrastructure)
             $meta_tags .= '<meta property="fb:app_id" content="966242223397117" />' . "\n";
 
-            // Additional structured data
+            // Required meta tags for WhatsApp
             if (!empty($data['title'])) {
                 $meta_tags .= '<meta property="og:title" content="' . esc_attr($data['title']) . '" />' . "\n";
+                $meta_tags .= '<meta property="og:site_name" content="' . esc_attr($data['title']) . '" />' . "\n";
+                $meta_tags .= '<meta name="twitter:title" content="' . esc_attr($data['title']) . '" />' . "\n";
             }
 
             if (!empty($data['description'])) {
-                $meta_tags .= '<meta property="og:description" content="' . esc_attr($data['description']) . '" />' . "\n";
+                $description = wp_trim_words($data['description'], 50, '...');
+                $meta_tags .= '<meta property="og:description" content="' . esc_attr($description) . '" />' . "\n";
+                $meta_tags .= '<meta name="twitter:description" content="' . esc_attr($description) . '" />' . "\n";
+            }
+
+            // Add image URL with cache buster
+            if (!empty($data['image'])) {
+                $image_url = $this->add_cache_buster($data['image']);
+                $meta_tags .= '<meta property="og:image" content="' . esc_url($image_url) . '" />' . "\n";
+                $meta_tags .= '<meta property="og:image:secure_url" content="' . esc_url(str_replace('http://', 'https://', $image_url)) . '" />' . "\n";
+                $meta_tags .= '<meta name="twitter:image" content="' . esc_url($image_url) . '" />' . "\n";
+                $meta_tags .= '<link rel="image_src" href="' . esc_url($image_url) . '" />' . "\n";
             }
 
             return $meta_tags;

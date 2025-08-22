@@ -67,18 +67,8 @@ if (! class_exists('STI_Admin_Notices')) :
          */
         public function admin_notices_local()
         {
-
-            if (get_option('sti-notice-dismiss-local-notice')) {
-                return;
-            }
-
-            if (isset($_GET['page']) && $_GET['page'] === 'sti-options') { ?>
-                <div data-sti-notice="local-notice" class="notice notice-info is-dismissible">
-                    <p><?php _e('<strong>Remember:</strong> Plugin won\'t work properly if you are using it on your <strong>local server</strong> or if your site has disabled <strong>search engine indexing</strong>.', 'wiki-image-social-share'); ?></p>
-
-                    <p><?php _e('Please test the <strong>Wiki Image Social Share</strong> plugin on a publicly available site.', 'wiki-image-social-share'); ?></p>
-                </div>
-<?php }
+            // Suppressed: Keep admin UI clean. No non-essential notices.
+            return;
         }
 
         /*
@@ -86,18 +76,8 @@ if (! class_exists('STI_Admin_Notices')) :
          */
         public function display_welcome_header()
         {
-
-            if (! isset($_GET['page']) || $_GET['page'] !== 'sti-options') {
-                return;
-            }
-
-            $hide_notice = get_option('wiss_hide_welcome_notice');
-
-            if (!! $hide_notice || $hide_notice === 'true') {
-                return;
-            }
-
-            echo STI_Admin_Meta_Boxes::get_welcome_notice();
+            // Suppressed: Remove welcome/promo header from admin to avoid clutter.
+            return;
         }
 
         /*
